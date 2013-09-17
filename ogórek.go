@@ -1,4 +1,6 @@
-// Package ogórek is a library for handling Python pickles
+// Package ogórek is a library for decoding Python's pickle format.
+//
+// ogórek is Polish for "pickle".
 package ogórek
 
 import (
@@ -12,87 +14,87 @@ import (
 
 // Opcodes
 const (
-	MARK            = "(" // push special markobject on stack
-	STOP            = "." // every pickle ends with STOP
-	POP             = "0" // discard topmost stack item
-	POP_MARK        = "1" // discard stack top through topmost markobject
-	DUP             = "2" // duplicate top stack item
-	FLOAT           = "F" // push float object; decimal string argument
-	INT             = "I" // push integer or bool; decimal string argument
-	BININT          = "J" // push four-byte signed int
-	BININT1         = "K" // push 1-byte unsigned int
-	LONG            = "L" // push long; decimal string argument
-	BININT2         = "M" // push 2-byte unsigned int
-	NONE            = "N" // push None
-	PERSID          = "P" // push persistent object; id is taken from string arg
-	BINPERSID       = "Q" //  "       "         "  ;  "  "   "     "  stack
-	REDUCE          = "R" // apply callable to argtuple, both on stack
-	STRING          = "S" // push string; NL-terminated string argument
-	BINSTRING       = "T" // push string; counted binary string argument
-	SHORT_BINSTRING = "U" //  "     "   ;    "      "       "      " < 256 bytes
-	UNICODE         = "V" // push Unicode string; raw-unicode-escaped"d argument
-	BINUNICODE      = "X" //   "     "       "  ; counted UTF-8 string argument
-	APPEND          = "a" // append stack top to list below it
-	BUILD           = "b" // call __setstate__ or __dict__.update()
-	GLOBAL          = "c" // push self.find_class(modname, name); 2 string args
-	DICT            = "d" // build a dict from stack items
-	EMPTY_DICT      = "}" // push empty dict
-	APPENDS         = "e" // extend list on stack by topmost stack slice
-	GET             = "g" // push item from memo on stack; index is string arg
-	BINGET          = "h" //   "    "    "    "   "   "  ;   "    " 1-byte arg
-	INST            = "i" // build & push class instance
-	LONG_BINGET     = "j" // push item from memo on stack; index is 4-byte arg
-	LIST            = "l" // build list from topmost stack items
-	EMPTY_LIST      = "]" // push empty list
-	OBJ             = "o" // build & push class instance
-	PUT             = "p" // store stack top in memo; index is string arg
-	BINPUT          = "q" //   "     "    "   "   " ;   "    " 1-byte arg
-	LONG_BINPUT     = "r" //   "     "    "   "   " ;   "    " 4-byte arg
-	SETITEM         = "s" // add key+value pair to dict
-	TUPLE           = "t" // build tuple from topmost stack items
-	EMPTY_TUPLE     = ")" // push empty tuple
-	SETITEMS        = "u" // modify dict by adding topmost key+value pairs
-	BINFLOAT        = "G" // push float; arg is 8-byte float encoding
+	opMark           = "(" // push special markobject on stack
+	opStop           = "." // every pickle ends with STOP
+	opPop            = "0" // discard topmost stack item
+	opPopMark        = "1" // discard stack top through topmost markobject
+	opDup            = "2" // duplicate top stack item
+	opFloat          = "F" // push float object; decimal string argument
+	opInt            = "I" // push integer or bool; decimal string argument
+	opBinint         = "J" // push four-byte signed int
+	opBinint1        = "K" // push 1-byte unsigned int
+	opLong           = "L" // push long; decimal string argument
+	opBinint2        = "M" // push 2-byte unsigned int
+	opNone           = "N" // push None
+	opPersid         = "P" // push persistent object; id is taken from string arg
+	opBinpersid      = "Q" //  "       "         "  ;  "  "   "     "  stack
+	opReduce         = "R" // apply callable to argtuple, both on stack
+	opString         = "S" // push string; NL-terminated string argument
+	opBinstring      = "T" // push string; counted binary string argument
+	opShortBinstring = "U" //  "     "   ;    "      "       "      " < 256 bytes
+	opUnicode        = "V" // push Unicode string; raw-unicode-escaped"d argument
+	opBinunicode     = "X" //   "     "       "  ; counted UTF-8 string argument
+	opAppend         = "a" // append stack top to list below it
+	opBuild          = "b" // call __setstate__ or __dict__.update()
+	opGlobal         = "c" // push self.find_class(modname, name); 2 string args
+	opDict           = "d" // build a dict from stack items
+	opEmptyDict      = "}" // push empty dict
+	opAppends        = "e" // extend list on stack by topmost stack slice
+	opGet            = "g" // push item from memo on stack; index is string arg
+	opBinget         = "h" //   "    "    "    "   "   "  ;   "    " 1-byte arg
+	opInst           = "i" // build & push class instance
+	opLongBinget     = "j" // push item from memo on stack; index is 4-byte arg
+	opList           = "l" // build list from topmost stack items
+	opEmptyList      = "]" // push empty list
+	opObj            = "o" // build & push class instance
+	opPut            = "p" // store stack top in memo; index is string arg
+	opBinput         = "q" //   "     "    "   "   " ;   "    " 1-byte arg
+	opLongBinput     = "r" //   "     "    "   "   " ;   "    " 4-byte arg
+	opSetitem        = "s" // add key+value pair to dict
+	opTuple          = "t" // build tuple from topmost stack items
+	opEmptyTuple     = ")" // push empty tuple
+	opSetitems       = "u" // modify dict by adding topmost key+value pairs
+	opBinfloat       = "G" // push float; arg is 8-byte float encoding
 
-	TRUE  = "I01\n" // not an opcode; see INT docs in pickletools.py
-	FALSE = "I00\n" // not an opcode; see INT docs in pickletools.py
+	opTrue  = "I01\n" // not an opcode; see INT docs in pickletools.py
+	opFalse = "I00\n" // not an opcode; see INT docs in pickletools.py
 
 	// Protocol 2
 
-	PROTO    = "\x80" // identify pickle protocol
-	NEWOBJ   = "\x81" // build object by applying cls.__new__ to argtuple
-	EXT1     = "\x82" // push object from extension registry; 1-byte index
-	EXT2     = "\x83" // ditto, but 2-byte index
-	EXT4     = "\x84" // ditto, but 4-byte index
-	TUPLE1   = "\x85" // build 1-tuple from stack top
-	TUPLE2   = "\x86" // build 2-tuple from two topmost stack items
-	TUPLE3   = "\x87" // build 3-tuple from three topmost stack items
-	NEWTRUE  = "\x88" // push True
-	NEWFALSE = "\x89" // push False
-	LONG1    = "\x8a" // push long from < 256 bytes
-	LONG4    = "\x8b" // push really big long
+	opProto    = "\x80" // identify pickle protocol
+	opNewobj   = "\x81" // build object by applying cls.__new__ to argtuple
+	opExt1     = "\x82" // push object from extension registry; 1-byte index
+	opExt2     = "\x83" // ditto, but 2-byte index
+	opExt4     = "\x84" // ditto, but 4-byte index
+	opTuple1   = "\x85" // build 1-tuple from stack top
+	opTuple2   = "\x86" // build 2-tuple from two topmost stack items
+	opTuple3   = "\x87" // build 3-tuple from three topmost stack items
+	opNewtrue  = "\x88" // push True
+	opNewfalse = "\x89" // push False
+	opLong1    = "\x8a" // push long from < 256 bytes
+	opLong4    = "\x8b" // push really big long
 )
 
 // special marker
 type mark struct{}
 
-// None is a representation of Python's None
+// None is a representation of Python's None.
 type None struct{}
 
-// Decoder is a decoder for pickle streams
+// Decoder is a decoder for pickle streams.
 type Decoder struct {
 	r     *bufio.Reader
 	stack []interface{}
 	memo  map[string]interface{}
 }
 
-// NewDecoder constructs a new Decoder which will decode the pickle stream in r
+// NewDecoder constructs a new Decoder which will decode the pickle stream in r.
 func NewDecoder(r io.Reader) Decoder {
 	reader := bufio.NewReader(r)
 	return Decoder{reader, make([]interface{}, 0), make(map[string]interface{})}
 }
 
-// Decode decodes the pickele stream and returns the result or an error
+// Decode decodes the pickle stream and returns the result or an error.
 func (d Decoder) Decode() (interface{}, error) {
 	for {
 		key, err := d.r.ReadByte()
@@ -103,87 +105,87 @@ func (d Decoder) Decode() (interface{}, error) {
 		}
 
 		switch string(key) {
-		case MARK:
+		case opMark:
 			d.mark()
-		case STOP:
+		case opStop:
 			break
-		case POP:
+		case opPop:
 			d.pop()
-		case POP_MARK:
+		case opPopMark:
 			d.popMark()
-		case DUP:
+		case opDup:
 			d.dup()
-		case FLOAT:
+		case opFloat:
 			err = d.loadFloat()
-		case INT:
+		case opInt:
 			err = d.loadInt()
-		case BININT:
+		case opBinint:
 			d.loadBinInt()
-		case BININT1:
+		case opBinint1:
 			d.loadBinInt1()
-		case LONG:
+		case opLong:
 			err = d.loadLong()
-		case BININT2:
+		case opBinint2:
 			d.loadBinInt2()
-		case NONE:
-			d.append(None{})
-		case PERSID:
+		case opNone:
+			d.loadNone()
+		case opPersid:
 			d.loadPersid()
-		case BINPERSID:
+		case opBinpersid:
 			d.loadBinPersid()
-		case REDUCE:
+		case opReduce:
 			d.reduce()
-		case STRING:
+		case opString:
 			err = d.loadString()
-		case BINSTRING:
+		case opBinstring:
 			d.loadBinString()
-		case SHORT_BINSTRING:
+		case opShortBinstring:
 			d.loadShortBinString()
-		case UNICODE:
+		case opUnicode:
 			err = d.loadUnicode()
-		case BINUNICODE:
+		case opBinunicode:
 			d.loadBinUnicode()
-		case APPEND:
+		case opAppend:
 			d.loadAppend()
-		case BUILD:
+		case opBuild:
 			d.build()
-		case GLOBAL:
+		case opGlobal:
 			d.global()
-		case DICT:
+		case opDict:
 			d.loadDict()
-		case EMPTY_DICT:
+		case opEmptyDict:
 			d.loadEmptyDict()
-		case APPENDS:
+		case opAppends:
 			err = d.loadAppends()
-		case GET:
+		case opGet:
 			d.get()
-		case BINGET:
+		case opBinget:
 			d.binGet()
-		case INST:
+		case opInst:
 			d.inst()
-		case LONG_BINGET:
+		case opLongBinget:
 			d.longBinGet()
-		case LIST:
+		case opList:
 			d.loadList()
-		case EMPTY_LIST:
+		case opEmptyList:
 			d.append([]interface{}{})
-		case OBJ:
+		case opObj:
 			d.obj()
-		case PUT:
+		case opPut:
 			err = d.loadPut()
-		case BINPUT:
+		case opBinput:
 			d.binPut()
-		case LONG_BINPUT:
+		case opLongBinput:
 			d.longBinPut()
-		case SETITEM:
+		case opSetitem:
 			err = d.loadSetItem()
-		case TUPLE:
+		case opTuple:
 			d.loadTuple()
-		case EMPTY_TUPLE:
+		case opEmptyTuple:
 			d.append([]interface{}{})
-		case SETITEMS:
+		case opSetitems:
 			d.setItems()
-		case BINFLOAT:
+		case opBinfloat:
 			d.binFloat()
 		default:
 			return nil, fmt.Errorf("Unknown opcode: %q", key)
@@ -259,9 +261,9 @@ func (d *Decoder) loadInt() error {
 	var val interface{}
 
 	switch string(line) {
-	case FALSE[1:3]:
+	case opFalse[1:3]:
 		val = false
-	case TRUE[1:3]:
+	case opTrue[1:3]:
 		val = true
 	default:
 		i, err := strconv.ParseInt(string(line), 10, 64)

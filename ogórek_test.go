@@ -48,7 +48,6 @@ func equal(a, b interface{}) bool {
 	default:
 		return a == b
 	}
-	return false
 }
 
 func TestMarker(t *testing.T) {
