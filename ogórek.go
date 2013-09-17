@@ -73,23 +73,26 @@ const (
 	LONG4    = "\x8b" // push really big long
 )
 
+// special marker
+type mark struct{}
+
+// None is a representation of Python's None
+type None struct{}
+
+// Decoder is a decoder for pickle streams
 type Decoder struct {
 	r     *bufio.Reader
 	stack []interface{}
 	memo  map[string]interface{}
 }
 
+// NewDecoder constructs a new Decoder which will decode the pickle stream in r
 func NewDecoder(r io.Reader) Decoder {
 	reader := bufio.NewReader(r)
 	return Decoder{reader, make([]interface{}, 0), make(map[string]interface{})}
 }
 
-// special marker
-type mark struct{}
-
-// representation of None
-type None struct{}
-
+// Decode decodes the pickele stream and returns the result or an error
 func (d Decoder) Decode() (interface{}, error) {
 	for {
 		key, err := d.r.ReadByte()
@@ -193,12 +196,12 @@ func (d Decoder) Decode() (interface{}, error) {
 	return d.pop(), nil
 }
 
-// Push a marker on to the stack
+// Push a marker
 func (d *Decoder) mark() {
 	d.append(mark{})
 }
 
-// Return the position of the marker
+// Return the position of the topmost marker
 func (d *Decoder) marker() int {
 	m := mark{}
 	var k int
@@ -210,26 +213,29 @@ func (d *Decoder) marker() int {
 	panic("no marker in stack")
 }
 
-// Append a new value to the decoder stack
+// Append a new value
 func (d *Decoder) append(v interface{}) {
 	d.stack = append(d.stack, v)
 }
 
-// Pop a value from the decoder stack
+// Pop a value
 func (d *Decoder) pop() interface{} {
 	v := d.stack[len(d.stack)-1]
 	d.stack = d.stack[:len(d.stack)-1]
 	return v
 }
 
+// Discard the stack through to the topmost marker
 func (d *Decoder) popMark() {
 
 }
 
+// Duplicate the top stack item
 func (d *Decoder) dup() {
 	d.stack = append(d.stack, d.stack[len(d.stack)-1])
 }
 
+// Push a float
 func (d *Decoder) loadFloat() error {
 	line, _, err := d.r.ReadLine()
 	if err != nil {
@@ -243,6 +249,7 @@ func (d *Decoder) loadFloat() error {
 	return nil
 }
 
+// Push an int
 func (d *Decoder) loadInt() error {
 	line, _, err := d.r.ReadLine()
 	if err != nil {
@@ -268,12 +275,15 @@ func (d *Decoder) loadInt() error {
 	return nil
 }
 
+// Push a four-byte signed int
 func (d *Decoder) loadBinInt() {
 }
 
+// Push a 1-byte unsigned int
 func (d *Decoder) loadBinInt1() {
 }
 
+// Push a long
 func (d *Decoder) loadLong() error {
 	line, _, err := d.r.ReadLine()
 	if err != nil {
@@ -285,13 +295,21 @@ func (d *Decoder) loadLong() error {
 	return nil
 }
 
+// Push a 2-byte unsigned int
 func (d *Decoder) loadBinInt2() {
 
 }
 
+// Push None
+func (d *Decoder) loadNone() {
+	d.append(None{})
+}
+
+// Push a persistent object id
 func (d *Decoder) loadPersid() {
 }
 
+// Push a persistent object id from items on the stack
 func (d *Decoder) loadBinPersid() {
 }
 
@@ -304,6 +322,7 @@ func decodeStringEscape(b []byte) string {
 	return string(b)
 }
 
+// Push a string
 func (d *Decoder) loadString() error {
 	line, _, err := d.r.ReadLine()
 	if err != nil {
