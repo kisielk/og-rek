@@ -14,43 +14,6 @@ func bigInt(s string) *big.Int {
 	return i
 }
 
-func equal(a, b interface{}) bool {
-	if reflect.TypeOf(a) != reflect.TypeOf(b) {
-		return false
-	}
-
-	switch a.(type) {
-	case []interface{}:
-		ia := a.([]interface{})
-		ib := b.([]interface{})
-		if len(ia) != len(ib) {
-			return false
-		}
-		for i := 0; i < len(ia); i++ {
-			if !equal(ia[i], ib[i]) {
-				return false
-			}
-		}
-		return true
-	case map[interface{}]interface{}:
-		ia := a.(map[interface{}]interface{})
-		ib := b.(map[interface{}]interface{})
-		if len(ia) != len(ib) {
-			return false
-		}
-		for k := range ia {
-			if !equal(ia[k], ib[k]) {
-				return false
-			}
-		}
-		return true
-	case *big.Int:
-		return a.(*big.Int).Cmp(b.(*big.Int)) == 0
-	default:
-		return a == b
-	}
-}
-
 func TestMarker(t *testing.T) {
 	buf := bytes.Buffer{}
 	dec := NewDecoder(&buf)
@@ -93,7 +56,8 @@ func TestDecode(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if !equal(v, test.expected) {
+
+		if !reflect.DeepEqual(v, test.expected) {
 			t.Errorf("%s: got\n%q\n expected\n%q", test.name, v, test.expected)
 		}
 	}
