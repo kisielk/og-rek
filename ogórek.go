@@ -78,9 +78,17 @@ const (
 	opLong4    = '\x8b' // push really big long
 )
 
-var ErrNotImplemented = errors.New("unimplemented opcode")
-var ErrUnknownOptocde = errors.New("unknown opcode")
+var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
+
+type OpcodeError struct {
+	Key byte
+	Pos int
+}
+
+func (e OpcodeError) Error() string {
+	return fmt.Sprintf("Unknown opcode %d (%c) at position %d: %q", e.Key, e.Key, e.Pos, e.Key)
+}
 
 // special marker
 type mark struct{}
@@ -204,10 +212,13 @@ func (d Decoder) Decode() (interface{}, error) {
 			}
 
 		default:
-			return nil, fmt.Errorf("Unknown opcode %d (%c) at isns %d: %q", key, key, insn, key)
+			return nil, OpcodeError{key, insn}
 		}
 
 		if err != nil {
+			if err == errNotImplemented {
+				return nil, OpcodeError{key, insn}
+			}
 			return nil, err
 		}
 	}
@@ -246,7 +257,7 @@ func (d *Decoder) pop() interface{} {
 
 // Discard the stack through to the topmost marker
 func (d *Decoder) popMark() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 // Duplicate the top stack item
@@ -323,7 +334,7 @@ func (d *Decoder) loadLong() error {
 
 // Push a 2-byte unsigned int
 func (d *Decoder) loadBinInt2() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 // Push None
@@ -334,16 +345,16 @@ func (d *Decoder) loadNone() error {
 
 // Push a persistent object id
 func (d *Decoder) loadPersid() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 // Push a persistent object id from items on the stack
 func (d *Decoder) loadBinPersid() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) reduce() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func decodeStringEscape(b []byte) string {
@@ -377,7 +388,7 @@ func (d *Decoder) loadString() error {
 }
 
 func (d *Decoder) loadBinString() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadShortBinString() error {
@@ -418,7 +429,7 @@ func (d *Decoder) loadUnicode() error {
 }
 
 func (d *Decoder) loadBinUnicode() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadAppend() error {
@@ -435,11 +446,11 @@ func (d *Decoder) loadAppend() error {
 }
 
 func (d *Decoder) build() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) global() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadDict() error {
@@ -476,19 +487,19 @@ func (d *Decoder) loadAppends() error {
 }
 
 func (d *Decoder) get() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) binGet() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) inst() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) longBinGet() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadList() error {
@@ -506,7 +517,7 @@ func (d *Decoder) loadTuple() error {
 }
 
 func (d *Decoder) obj() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadPut() error {
@@ -525,7 +536,7 @@ func (d *Decoder) binPut() error {
 }
 
 func (d *Decoder) longBinPut() error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
 func (d *Decoder) loadSetItem() error {
