@@ -411,7 +411,10 @@ func (d *Decoder) loadBinString() error {
 func (d *Decoder) loadShortBinString() error {
 	b, _ := d.r.ReadByte()
 	s := make([]byte, b)
-	d.r.Read(s)
+	_, err := io.ReadFull(d.r, s)
+	if err != nil {
+		return err
+	}
 	d.push(string(s))
 	return nil
 }
@@ -586,9 +589,8 @@ func (d *Decoder) loadSetItems() error {
 }
 
 func (d *Decoder) binFloat() error {
-	f := make([]byte, 8)
-	d.r.Read(f)
-	u := binary.BigEndian.Uint64(f)
+	var u uint64
+	binary.Read(d.r, binary.BigEndian, &u)
 	d.stack = append(d.stack, math.Float64frombits(u))
 	return nil
 }
