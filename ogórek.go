@@ -334,7 +334,13 @@ func (d *Decoder) loadLong() error {
 
 // Push a 2-byte unsigned int
 func (d *Decoder) loadBinInt2() error {
-	return errNotImplemented
+	var u uint16
+	err := binary.Read(d.r, binary.LittleEndian, &u)
+	if err != nil {
+		return err
+	}
+	d.push(int64(u))
+	return nil
 }
 
 // Push None
@@ -388,7 +394,18 @@ func (d *Decoder) loadString() error {
 }
 
 func (d *Decoder) loadBinString() error {
-	return errNotImplemented
+	var v int32
+	err := binary.Read(d.r, binary.LittleEndian, &v)
+	if err != nil {
+		return err
+	}
+	s := make([]byte, v)
+	_, err = io.ReadFull(d.r, s)
+	if err != nil {
+		return err
+	}
+	d.push(string(s))
+	return nil
 }
 
 func (d *Decoder) loadShortBinString() error {
