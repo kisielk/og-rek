@@ -6,74 +6,81 @@ package ogórek
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"strconv"
 )
 
 // Opcodes
 const (
-	opMark           = "(" // push special markobject on stack
-	opStop           = "." // every pickle ends with STOP
-	opPop            = "0" // discard topmost stack item
-	opPopMark        = "1" // discard stack top through topmost markobject
-	opDup            = "2" // duplicate top stack item
-	opFloat          = "F" // push float object; decimal string argument
-	opInt            = "I" // push integer or bool; decimal string argument
-	opBinint         = "J" // push four-byte signed int
-	opBinint1        = "K" // push 1-byte unsigned int
-	opLong           = "L" // push long; decimal string argument
-	opBinint2        = "M" // push 2-byte unsigned int
-	opNone           = "N" // push None
-	opPersid         = "P" // push persistent object; id is taken from string arg
-	opBinpersid      = "Q" //  "       "         "  ;  "  "   "     "  stack
-	opReduce         = "R" // apply callable to argtuple, both on stack
-	opString         = "S" // push string; NL-terminated string argument
-	opBinstring      = "T" // push string; counted binary string argument
-	opShortBinstring = "U" //  "     "   ;    "      "       "      " < 256 bytes
-	opUnicode        = "V" // push Unicode string; raw-unicode-escaped"d argument
-	opBinunicode     = "X" //   "     "       "  ; counted UTF-8 string argument
-	opAppend         = "a" // append stack top to list below it
-	opBuild          = "b" // call __setstate__ or __dict__.update()
-	opGlobal         = "c" // push self.find_class(modname, name); 2 string args
-	opDict           = "d" // build a dict from stack items
-	opEmptyDict      = "}" // push empty dict
-	opAppends        = "e" // extend list on stack by topmost stack slice
-	opGet            = "g" // push item from memo on stack; index is string arg
-	opBinget         = "h" //   "    "    "    "   "   "  ;   "    " 1-byte arg
-	opInst           = "i" // build & push class instance
-	opLongBinget     = "j" // push item from memo on stack; index is 4-byte arg
-	opList           = "l" // build list from topmost stack items
-	opEmptyList      = "]" // push empty list
-	opObj            = "o" // build & push class instance
-	opPut            = "p" // store stack top in memo; index is string arg
-	opBinput         = "q" //   "     "    "   "   " ;   "    " 1-byte arg
-	opLongBinput     = "r" //   "     "    "   "   " ;   "    " 4-byte arg
-	opSetitem        = "s" // add key+value pair to dict
-	opTuple          = "t" // build tuple from topmost stack items
-	opEmptyTuple     = ")" // push empty tuple
-	opSetitems       = "u" // modify dict by adding topmost key+value pairs
-	opBinfloat       = "G" // push float; arg is 8-byte float encoding
+	opMark           byte = '(' // push special markobject on stack
+	opStop                = '.' // every pickle ends with STOP
+	opPop                 = '0' // discard topmost stack item
+	opPopMark             = '1' // discard stack top through topmost markobject
+	opDup                 = '2' // duplicate top stack item
+	opFloat               = 'F' // push float object; decimal string argument
+	opInt                 = 'I' // push integer or bool; decimal string argument
+	opBinint              = 'J' // push four-byte signed int
+	opBinint1             = 'K' // push 1-byte unsigned int
+	opLong                = 'L' // push long; decimal string argument
+	opBinint2             = 'M' // push 2-byte unsigned int
+	opNone                = 'N' // push None
+	opPersid              = 'P' // push persistent object; id is taken from string arg
+	opBinpersid           = 'Q' //  "       "         "  ;  "  "   "     "  stack
+	opReduce              = 'R' // apply callable to argtuple, both on stack
+	opString              = 'S' // push string; NL-terminated string argument
+	opBinstring           = 'T' // push string; counted binary string argument
+	opShortBinstring      = 'U' //  "     "   ;    "      "       "      " < 256 bytes
+	opUnicode             = 'V' // push Unicode string; raw-unicode-escaped"d argument
+	opBinunicode          = 'X' //   "     "       "  ; counted UTF-8 string argument
+	opAppend              = 'a' // append stack top to list below it
+	opBuild               = 'b' // call __setstate__ or __dict__.update()
+	opGlobal              = 'c' // push self.find_class(modname, name); 2 string args
+	opDict                = 'd' // build a dict from stack items
+	opEmptyDict           = '}' // push empty dict
+	opAppends             = 'e' // extend list on stack by topmost stack slice
+	opGet                 = 'g' // push item from memo on stack; index is string arg
+	opBinget              = 'h' //   "    "    "    "   "   "  ;   "    " 1-byte arg
+	opInst                = 'i' // build & push class instance
+	opLongBinget          = 'j' // push item from memo on stack; index is 4-byte arg
+	opList                = 'l' // build list from topmost stack items
+	opEmptyList           = ']' // push empty list
+	opObj                 = 'o' // build & push class instance
+	opPut                 = 'p' // store stack top in memo; index is string arg
+	opBinput              = 'q' //   "     "    "   "   " ;   "    " 1-byte arg
+	opLongBinput          = 'r' //   "     "    "   "   " ;   "    " 4-byte arg
+	opSetitem             = 's' // add key+value pair to dict
+	opTuple               = 't' // build tuple from topmost stack items
+	opEmptyTuple          = ')' // push empty tuple
+	opSetitems            = 'u' // modify dict by adding topmost key+value pairs
+	opBinfloat            = 'G' // push float; arg is 8-byte float encoding
 
 	opTrue  = "I01\n" // not an opcode; see INT docs in pickletools.py
 	opFalse = "I00\n" // not an opcode; see INT docs in pickletools.py
 
 	// Protocol 2
 
-	opProto    = "\x80" // identify pickle protocol
-	opNewobj   = "\x81" // build object by applying cls.__new__ to argtuple
-	opExt1     = "\x82" // push object from extension registry; 1-byte index
-	opExt2     = "\x83" // ditto, but 2-byte index
-	opExt4     = "\x84" // ditto, but 4-byte index
-	opTuple1   = "\x85" // build 1-tuple from stack top
-	opTuple2   = "\x86" // build 2-tuple from two topmost stack items
-	opTuple3   = "\x87" // build 3-tuple from three topmost stack items
-	opNewtrue  = "\x88" // push True
-	opNewfalse = "\x89" // push False
-	opLong1    = "\x8a" // push long from < 256 bytes
-	opLong4    = "\x8b" // push really big long
+	opProto    = '\x80' // identify pickle protocol
+	opNewobj   = '\x81' // build object by applying cls.__new__ to argtuple
+	opExt1     = '\x82' // push object from extension registry; 1-byte index
+	opExt2     = '\x83' // ditto, but 2-byte index
+	opExt4     = '\x84' // ditto, but 4-byte index
+	opTuple1   = '\x85' // build 1-tuple from stack top
+	opTuple2   = '\x86' // build 2-tuple from two topmost stack items
+	opTuple3   = '\x87' // build 3-tuple from three topmost stack items
+	opNewtrue  = '\x88' // push True
+	opNewfalse = '\x89' // push False
+	opLong1    = '\x8a' // push long from < 256 bytes
+	opLong4    = '\x8b' // push really big long
 )
+
+var ErrNotImplemented = errors.New("unimplemented opcode")
+var ErrUnknownOptocde = errors.New("unknown opcode")
+var ErrInvalidPickleVersion = errors.New("invalid pickle version")
 
 // special marker
 type mark struct{}
@@ -96,7 +103,10 @@ func NewDecoder(r io.Reader) Decoder {
 
 // Decode decodes the pickle stream and returns the result or an error.
 func (d Decoder) Decode() (interface{}, error) {
+
+	insn := 0
 	for {
+		insn++
 		key, err := d.r.ReadByte()
 		if err == io.EOF {
 			break
@@ -104,7 +114,7 @@ func (d Decoder) Decode() (interface{}, error) {
 			return nil, err
 		}
 
-		switch string(key) {
+		switch key {
 		case opMark:
 			d.mark()
 		case opStop:
@@ -120,75 +130,81 @@ func (d Decoder) Decode() (interface{}, error) {
 		case opInt:
 			err = d.loadInt()
 		case opBinint:
-			d.loadBinInt()
+			err = d.loadBinInt()
 		case opBinint1:
-			d.loadBinInt1()
+			err = d.loadBinInt1()
 		case opLong:
 			err = d.loadLong()
 		case opBinint2:
-			d.loadBinInt2()
+			err = d.loadBinInt2()
 		case opNone:
-			d.loadNone()
+			err = d.loadNone()
 		case opPersid:
-			d.loadPersid()
+			err = d.loadPersid()
 		case opBinpersid:
-			d.loadBinPersid()
+			err = d.loadBinPersid()
 		case opReduce:
-			d.reduce()
+			err = d.reduce()
 		case opString:
 			err = d.loadString()
 		case opBinstring:
-			d.loadBinString()
+			err = d.loadBinString()
 		case opShortBinstring:
-			d.loadShortBinString()
+			err = d.loadShortBinString()
 		case opUnicode:
 			err = d.loadUnicode()
 		case opBinunicode:
-			d.loadBinUnicode()
+			err = d.loadBinUnicode()
 		case opAppend:
-			d.loadAppend()
+			err = d.loadAppend()
 		case opBuild:
-			d.build()
+			err = d.build()
 		case opGlobal:
-			d.global()
+			err = d.global()
 		case opDict:
-			d.loadDict()
+			err = d.loadDict()
 		case opEmptyDict:
-			d.loadEmptyDict()
+			err = d.loadEmptyDict()
 		case opAppends:
 			err = d.loadAppends()
 		case opGet:
-			d.get()
+			err = d.get()
 		case opBinget:
-			d.binGet()
+			err = d.binGet()
 		case opInst:
-			d.inst()
+			err = d.inst()
 		case opLongBinget:
-			d.longBinGet()
+			err = d.longBinGet()
 		case opList:
-			d.loadList()
+			err = d.loadList()
 		case opEmptyList:
-			d.append([]interface{}{})
+			d.push([]interface{}{})
 		case opObj:
-			d.obj()
+			err = d.obj()
 		case opPut:
 			err = d.loadPut()
 		case opBinput:
-			d.binPut()
+			err = d.binPut()
 		case opLongBinput:
-			d.longBinPut()
+			err = d.longBinPut()
 		case opSetitem:
 			err = d.loadSetItem()
 		case opTuple:
-			d.loadTuple()
+			err = d.loadTuple()
 		case opEmptyTuple:
-			d.append([]interface{}{})
+			d.push([]interface{}{})
 		case opSetitems:
-			d.setItems()
+			err = d.loadSetItems()
 		case opBinfloat:
-			d.binFloat()
+			err = d.binFloat()
+		case opProto:
+			v, _ := d.r.ReadByte()
+			if v != 2 {
+				err = ErrInvalidPickleVersion
+			}
+
 		default:
-			return nil, fmt.Errorf("Unknown opcode: %q", key)
+			return nil, fmt.Errorf("Unknown opcode %d (%c) at isns %d: %q", key, key, insn, key)
 		}
 
 		if err != nil {
@@ -200,7 +216,7 @@ func (d Decoder) Decode() (interface{}, error) {
 
 // Push a marker
 func (d *Decoder) mark() {
-	d.append(mark{})
+	d.push(mark{})
 }
 
 // Return the position of the topmost marker
@@ -216,20 +232,21 @@ func (d *Decoder) marker() int {
 }
 
 // Append a new value
-func (d *Decoder) append(v interface{}) {
+func (d *Decoder) push(v interface{}) {
 	d.stack = append(d.stack, v)
 }
 
 // Pop a value
 func (d *Decoder) pop() interface{} {
-	v := d.stack[len(d.stack)-1]
-	d.stack = d.stack[:len(d.stack)-1]
+	ln := len(d.stack) - 1
+	v := d.stack[ln]
+	d.stack = d.stack[:ln]
 	return v
 }
 
 // Discard the stack through to the topmost marker
-func (d *Decoder) popMark() {
-
+func (d *Decoder) popMark() error {
+	return ErrNotImplemented
 }
 
 // Duplicate the top stack item
@@ -247,7 +264,7 @@ func (d *Decoder) loadFloat() error {
 	if err != nil {
 		return err
 	}
-	d.append(interface{}(v))
+	d.push(interface{}(v))
 	return nil
 }
 
@@ -273,16 +290,23 @@ func (d *Decoder) loadInt() error {
 		val = i
 	}
 
-	d.append(val)
+	d.push(val)
 	return nil
 }
 
 // Push a four-byte signed int
-func (d *Decoder) loadBinInt() {
+func (d *Decoder) loadBinInt() error {
+	var v int32
+	binary.Read(d.r, binary.LittleEndian, &v)
+	d.push(int64(v))
+	return nil
 }
 
 // Push a 1-byte unsigned int
-func (d *Decoder) loadBinInt1() {
+func (d *Decoder) loadBinInt1() error {
+	b, _ := d.r.ReadByte()
+	d.push(int64(b))
+	return nil
 }
 
 // Push a long
@@ -293,30 +317,33 @@ func (d *Decoder) loadLong() error {
 	}
 	v := new(big.Int)
 	v.SetString(string(line[:len(line)-1]), 10)
-	d.append(v)
+	d.push(v)
 	return nil
 }
 
 // Push a 2-byte unsigned int
-func (d *Decoder) loadBinInt2() {
-
+func (d *Decoder) loadBinInt2() error {
+	return ErrNotImplemented
 }
 
 // Push None
-func (d *Decoder) loadNone() {
-	d.append(None{})
+func (d *Decoder) loadNone() error {
+	d.push(None{})
+	return nil
 }
 
 // Push a persistent object id
-func (d *Decoder) loadPersid() {
+func (d *Decoder) loadPersid() error {
+	return ErrNotImplemented
 }
 
 // Push a persistent object id from items on the stack
-func (d *Decoder) loadBinPersid() {
+func (d *Decoder) loadBinPersid() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) reduce() {
-
+func (d *Decoder) reduce() error {
+	return ErrNotImplemented
 }
 
 func decodeStringEscape(b []byte) string {
@@ -345,15 +372,20 @@ func (d *Decoder) loadString() error {
 		return fmt.Errorf("insecure string")
 	}
 
-	d.append(decodeStringEscape(line[1 : len(line)-1]))
+	d.push(decodeStringEscape(line[1 : len(line)-1]))
 	return nil
 }
 
-func (d *Decoder) loadBinString() {
+func (d *Decoder) loadBinString() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) loadShortBinString() {
-
+func (d *Decoder) loadShortBinString() error {
+	b, _ := d.r.ReadByte()
+	s := make([]byte, b)
+	d.r.Read(s)
+	d.push(string(s))
+	return nil
 }
 
 func (d *Decoder) loadUnicode() error {
@@ -381,12 +413,12 @@ func (d *Decoder) loadUnicode() error {
 		return fmt.Errorf("characters remaining after loadUnicode operation: %s", sline)
 	}
 
-	d.append(buf.String())
+	d.push(buf.String())
 	return nil
 }
 
-func (d *Decoder) loadBinUnicode() {
-
+func (d *Decoder) loadBinUnicode() error {
+	return ErrNotImplemented
 }
 
 func (d *Decoder) loadAppend() error {
@@ -402,15 +434,15 @@ func (d *Decoder) loadAppend() error {
 	return nil
 }
 
-func (d *Decoder) build() {
-
+func (d *Decoder) build() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) global() {
-
+func (d *Decoder) global() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) loadDict() {
+func (d *Decoder) loadDict() error {
 	k := d.marker()
 	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
@@ -418,59 +450,63 @@ func (d *Decoder) loadDict() {
 		m[items[i]] = items[i+1]
 	}
 	d.stack = append(d.stack[:k], m)
+	return nil
 }
 
-func (d *Decoder) loadEmptyDict() {
+func (d *Decoder) loadEmptyDict() error {
 	m := make(map[interface{}]interface{}, 0)
-	d.append(m)
+	d.push(m)
+	return nil
 }
 
 func (d *Decoder) loadAppends() error {
 	k := d.marker()
-	l := d.stack[len(d.stack)-1]
+	l := d.stack[k-1]
 	switch l.(type) {
 	case []interface{}:
 		l := l.([]interface{})
-		for _, v := range d.stack[k:len(d.stack)] {
+		for _, v := range d.stack[k+1 : len(d.stack)] {
 			l = append(l, v)
 		}
-		d.stack = append(d.stack[:k], l)
+		d.stack = append(d.stack[:k-1], l)
 	default:
 		return fmt.Errorf("loadAppends expected a list, got %t", l)
 	}
 	return nil
 }
 
-func (d *Decoder) get() {
-
+func (d *Decoder) get() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) binGet() {
-
+func (d *Decoder) binGet() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) inst() {
-
+func (d *Decoder) inst() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) longBinGet() {
-
+func (d *Decoder) longBinGet() error {
+	return ErrNotImplemented
 }
 
-func (d *Decoder) loadList() {
+func (d *Decoder) loadList() error {
 	k := d.marker()
 	v := append([]interface{}{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
+	return nil
 }
 
-func (d *Decoder) loadTuple() {
+func (d *Decoder) loadTuple() error {
 	k := d.marker()
 	v := append([]interface{}{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
+	return nil
 }
 
-func (d *Decoder) obj() {
-
+func (d *Decoder) obj() error {
+	return ErrNotImplemented
 }
 
 func (d *Decoder) loadPut() error {
@@ -482,12 +518,14 @@ func (d *Decoder) loadPut() error {
 	return nil
 }
 
-func (d *Decoder) binPut() {
-
+func (d *Decoder) binPut() error {
+	b, _ := d.r.ReadByte()
+	d.memo[strconv.Itoa(int(b))] = d.stack[len(d.stack)-1]
+	return nil
 }
 
-func (d *Decoder) longBinPut() {
-
+func (d *Decoder) longBinPut() error {
+	return ErrNotImplemented
 }
 
 func (d *Decoder) loadSetItem() error {
@@ -504,10 +542,25 @@ func (d *Decoder) loadSetItem() error {
 	return nil
 }
 
-func (d *Decoder) setItems() {
-
+func (d *Decoder) loadSetItems() error {
+	k := d.marker()
+	l := d.stack[k-1]
+	switch m := l.(type) {
+	case map[interface{}]interface{}:
+		for i := k + 1; i < len(d.stack); i += 2 {
+			m[d.stack[i]] = d.stack[i+1]
+		}
+		d.stack = append(d.stack[:k-1], m)
+	default:
+		return fmt.Errorf("loadSetItems expected a map, got %t", m)
+	}
+	return nil
 }
 
-func (d *Decoder) binFloat() {
-
+func (d *Decoder) binFloat() error {
+	f := make([]byte, 8)
+	d.r.Read(f)
+	u := binary.BigEndian.Uint64(f)
+	d.stack = append(d.stack, math.Float64frombits(u))
+	return nil
 }
