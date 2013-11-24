@@ -511,7 +511,9 @@ func (d *Decoder) get() error {
 }
 
 func (d *Decoder) binGet() error {
-	return errNotImplemented
+	b, _ := d.r.ReadByte()
+	d.push(d.memo[strconv.Itoa(int(b))])
+	return nil
 }
 
 func (d *Decoder) inst() error {
@@ -519,7 +521,10 @@ func (d *Decoder) inst() error {
 }
 
 func (d *Decoder) longBinGet() error {
-	return errNotImplemented
+	var v int32
+	binary.Read(d.r, binary.LittleEndian, &v)
+	d.push(d.memo[strconv.Itoa(int(v))])
+	return nil
 }
 
 func (d *Decoder) loadList() error {
