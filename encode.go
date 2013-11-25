@@ -132,13 +132,16 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) {
 	// FIXME: need support for 64-bit ints
 
 	switch {
-	case i > 0 && i < math.MaxInt8:
+	case i > 0 && i < math.MaxUint8:
 		e.w.Write([]byte{opBinint1, byte(i)})
-	case i > 0 && i < math.MaxInt16:
-		e.w.Write([]byte{opBinint2, byte(i >> 8), byte(i)})
-	default:
+	case i > 0 && i < math.MaxUint16:
+		e.w.Write([]byte{opBinint2, byte(i), byte(i >> 8)})
+	case i >= math.MinInt32 && i <= math.MaxInt32:
 		e.w.Write([]byte{opBinint})
 		binary.Write(e.w, binary.LittleEndian, int32(i))
+	default: // int64, but as a string :/
+		e.w.Write([]byte{opInt})
+		fmt.Fprintf(e.w, "%d\n", i)
 	}
 }
 

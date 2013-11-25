@@ -334,7 +334,13 @@ func (d *Decoder) loadLong() error {
 
 // Push a 2-byte unsigned int
 func (d *Decoder) loadBinInt2() error {
-	return errNotImplemented
+	var u uint16
+	err := binary.Read(d.r, binary.LittleEndian, &u)
+	if err != nil {
+		return err
+	}
+	d.push(int64(u))
+	return nil
 }
 
 // Push None
@@ -388,13 +394,27 @@ func (d *Decoder) loadString() error {
 }
 
 func (d *Decoder) loadBinString() error {
-	return errNotImplemented
+	var v int32
+	err := binary.Read(d.r, binary.LittleEndian, &v)
+	if err != nil {
+		return err
+	}
+	s := make([]byte, v)
+	_, err = io.ReadFull(d.r, s)
+	if err != nil {
+		return err
+	}
+	d.push(string(s))
+	return nil
 }
 
 func (d *Decoder) loadShortBinString() error {
 	b, _ := d.r.ReadByte()
 	s := make([]byte, b)
-	d.r.Read(s)
+	_, err := io.ReadFull(d.r, s)
+	if err != nil {
+		return err
+	}
 	d.push(string(s))
 	return nil
 }
@@ -491,7 +511,9 @@ func (d *Decoder) get() error {
 }
 
 func (d *Decoder) binGet() error {
-	return errNotImplemented
+	b, _ := d.r.ReadByte()
+	d.push(d.memo[strconv.Itoa(int(b))])
+	return nil
 }
 
 func (d *Decoder) inst() error {
@@ -499,7 +521,10 @@ func (d *Decoder) inst() error {
 }
 
 func (d *Decoder) longBinGet() error {
-	return errNotImplemented
+	var v int32
+	binary.Read(d.r, binary.LittleEndian, &v)
+	d.push(d.memo[strconv.Itoa(int(v))])
+	return nil
 }
 
 func (d *Decoder) loadList() error {
@@ -569,9 +594,8 @@ func (d *Decoder) loadSetItems() error {
 }
 
 func (d *Decoder) binFloat() error {
-	f := make([]byte, 8)
-	d.r.Read(f)
-	u := binary.BigEndian.Uint64(f)
+	var u uint64
+	binary.Read(d.r, binary.BigEndian, &u)
 	d.stack = append(d.stack, math.Float64frombits(u))
 	return nil
 }
