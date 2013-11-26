@@ -507,7 +507,12 @@ func (d *Decoder) loadAppends() error {
 }
 
 func (d *Decoder) get() error {
-	return errNotImplemented
+	line, _, err := d.r.ReadLine()
+	if err != nil {
+		return err
+	}
+	d.push(d.memo[string(line)])
+	return nil
 }
 
 func (d *Decoder) binGet() error {
