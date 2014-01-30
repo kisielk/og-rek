@@ -145,24 +145,6 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) {
 	}
 }
 
-func (e *Encoder) encodeScalar(rv reflect.Value) {
-
-	switch rv.Kind() {
-	case reflect.Array, reflect.Slice:
-		if rv.Type().Elem().Kind() == reflect.Uint8 {
-			e.encodeBytes(rv.Bytes())
-		} else {
-			e.encodeArray(rv)
-		}
-	case reflect.Map:
-		e.encodeMap(rv)
-	case reflect.Interface:
-		e.encodeScalar(rv.Elem())
-	default:
-		e.encode(rv)
-	}
-}
-
 func (e *Encoder) encodeMap(m reflect.Value) {
 
 	keys := m.MapKeys()
