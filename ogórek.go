@@ -307,8 +307,12 @@ func (d *Decoder) loadInt() error {
 
 // Push a four-byte signed int
 func (d *Decoder) loadBinInt() error {
-	var v int32
-	binary.Read(d.r, binary.LittleEndian, &v)
+	var b [4]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	v := binary.LittleEndian.Uint32(b[:])
 	d.push(int64(v))
 	return nil
 }
@@ -334,12 +338,13 @@ func (d *Decoder) loadLong() error {
 
 // Push a 2-byte unsigned int
 func (d *Decoder) loadBinInt2() error {
-	var u uint16
-	err := binary.Read(d.r, binary.LittleEndian, &u)
+	var b [2]byte
+	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
 		return err
 	}
-	d.push(int64(u))
+	v := binary.LittleEndian.Uint16(b[:])
+	d.push(int64(v))
 	return nil
 }
 
@@ -394,11 +399,12 @@ func (d *Decoder) loadString() error {
 }
 
 func (d *Decoder) loadBinString() error {
-	var v int32
-	err := binary.Read(d.r, binary.LittleEndian, &v)
+	var b [4]byte
+	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
 		return err
 	}
+	v := binary.LittleEndian.Uint32(b[:])
 	s := make([]byte, v)
 	_, err = io.ReadFull(d.r, s)
 	if err != nil {
@@ -526,8 +532,12 @@ func (d *Decoder) inst() error {
 }
 
 func (d *Decoder) longBinGet() error {
-	var v int32
-	binary.Read(d.r, binary.LittleEndian, &v)
+	var b [4]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	v := binary.LittleEndian.Uint32(b[:])
 	d.push(d.memo[strconv.Itoa(int(v))])
 	return nil
 }
@@ -599,8 +609,12 @@ func (d *Decoder) loadSetItems() error {
 }
 
 func (d *Decoder) binFloat() error {
-	var u uint64
-	binary.Read(d.r, binary.BigEndian, &u)
+	var b [8]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	u := binary.BigEndian.Uint64(b[:])
 	d.stack = append(d.stack, math.Float64frombits(u))
 	return nil
 }

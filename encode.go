@@ -114,7 +114,9 @@ func (e *Encoder) encodeBytes(byt []byte) {
 		e.w.Write([]byte{opShortBinstring, byte(l)})
 	} else {
 		e.w.Write([]byte{opBinstring})
-		binary.Write(e.w, binary.LittleEndian, int32(l))
+		var b [4]byte
+		binary.LittleEndian.PutUint32(b[:], uint32(l))
+		e.w.Write(b[:])
 	}
 
 	e.w.Write(byt)
@@ -124,7 +126,9 @@ func (e *Encoder) encodeFloat(f float64) {
 	var u uint64
 	u = math.Float64bits(f)
 	e.w.Write([]byte{opBinfloat})
-	binary.Write(e.w, binary.BigEndian, u)
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], uint64(u))
+	e.w.Write(b[:])
 }
 
 func (e *Encoder) encodeInt(k reflect.Kind, i int64) {
@@ -138,7 +142,9 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) {
 		e.w.Write([]byte{opBinint2, byte(i), byte(i >> 8)})
 	case i >= math.MinInt32 && i <= math.MaxInt32:
 		e.w.Write([]byte{opBinint})
-		binary.Write(e.w, binary.LittleEndian, int32(i))
+		var b [4]byte
+		binary.LittleEndian.PutUint32(b[:], uint32(i))
+		e.w.Write(b[:])
 	default: // int64, but as a string :/
 		e.w.Write([]byte{opInt})
 		fmt.Fprintf(e.w, "%d\n", i)
