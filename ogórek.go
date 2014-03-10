@@ -672,7 +672,7 @@ func (d *Decoder) binFloat() error {
 	return nil
 }
 
-// decode_long takes a byte array of 2's compliment little-endian binary words and converts them
+// decodeLong takes a byte array of 2's compliment little-endian binary words and converts them
 // to a big integer
 func decodeLong(data string) (*big.Int, error) {
 	decoded := big.NewInt(0)
