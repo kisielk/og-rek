@@ -258,7 +258,6 @@ func (d *Decoder) pop() interface{} {
 	ln := len(d.stack) - 1
 	v := d.stack[ln]
 	d.stack = d.stack[:ln]
-	fmt.Printf("stack after = %#v\n", d.stack)
 	return v
 }
 
