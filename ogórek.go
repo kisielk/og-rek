@@ -181,6 +181,12 @@ func (d Decoder) Decode() (interface{}, error) {
 			err = d.binGet()
 		case opInst:
 			err = d.inst()
+		case opLong1:
+			err = d.loadLong1()
+		case opNewfalse:
+			err = d.loadBool(false)
+		case opNewtrue:
+			err = d.loadBool(true)
 		case opLongBinget:
 			err = d.longBinGet()
 		case opList:
@@ -249,9 +255,11 @@ func (d *Decoder) push(v interface{}) {
 
 // Pop a value
 func (d *Decoder) pop() interface{} {
+	fmt.Printf("stack before = %#v\n", d.stack)
 	ln := len(d.stack) - 1
 	v := d.stack[ln]
 	d.stack = d.stack[:ln]
+	fmt.Printf("stack after = %#v\n", d.stack)
 	return v
 }
 
@@ -329,6 +337,29 @@ func (d *Decoder) loadLong() error {
 	v := new(big.Int)
 	v.SetString(string(line[:len(line)-1]), 10)
 	d.push(v)
+	return nil
+}
+
+// Push a long1
+func (d *Decoder) loadLong1() error {
+	rawNum := []byte{}
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
+	length, err := decodeLong(string(b))
+	if err != nil {
+		return err
+	}
+	for i := 0; int64(i) < length.Int64(); i++ {
+		b2, err := d.r.ReadByte()
+		if err != nil {
+			return err
+		}
+		rawNum = append(rawNum, b2)
+	}
+	decodedNum, err := decodeLong(string(rawNum))
+	d.push(decodedNum)
 	return nil
 }
 
@@ -449,7 +480,24 @@ func (d *Decoder) loadUnicode() error {
 }
 
 func (d *Decoder) loadBinUnicode() error {
-	return errNotImplemented
+	var length int32
+	for i := 0; i < 4; i++ {
+		t, err := d.r.ReadByte()
+		if err != nil {
+			return err
+		}
+		length = length | (int32(t) << uint(8*i))
+	}
+	rawB := []byte{}
+	for z := 0; int32(z) < length; z++ {
+		n, err := d.r.ReadByte()
+		if err != nil {
+			return err
+		}
+		rawB = append(rawB, n)
+	}
+	d.push(string(rawB))
+	return nil
 }
 
 func (d *Decoder) loadAppend() error {
@@ -532,6 +580,11 @@ func (d *Decoder) longBinGet() error {
 	return nil
 }
 
+func (d *Decoder) loadBool(b bool) error {
+	d.push(b)
+	return nil
+}
+
 func (d *Decoder) loadList() error {
 	k := d.marker()
 	v := append([]interface{}{}, d.stack[k+1:]...)
@@ -603,4 +656,48 @@ func (d *Decoder) binFloat() error {
 	binary.Read(d.r, binary.BigEndian, &u)
 	d.stack = append(d.stack, math.Float64frombits(u))
 	return nil
+}
+
+// decode_long takes a byte array of 2's compliment little-endian binary words and converts them
+// to a big integer
+func decodeLong(data string) (*big.Int, error) {
+	decoded := big.NewInt(0)
+	var negative bool
+	switch x := len(data); {
+	case x < 1:
+		return decoded, nil
+	case x > 1:
+		if data[x-1] > 127 {
+			negative = true
+		}
+		for i := x - 1; i >= 0; i-- {
+			a := big.NewInt(int64(data[i]))
+			for n := i; n > 0; n-- {
+				a = a.Lsh(a, 8)
+			}
+			decoded = decoded.Add(a, decoded)
+		}
+	default:
+		if data[0] > 127 {
+			negative = true
+		}
+		decoded = big.NewInt(int64(data[0]))
+	}
+
+	if negative {
+		// Subtract 1 from the number
+		one := big.NewInt(1)
+		decoded.Sub(decoded, one)
+
+		// Flip the bits
+		bytes := decoded.Bytes()
+		for i := 0; i < len(bytes); i++ {
+			bytes[i] = ^bytes[i]
+		}
+		decoded.SetBytes(bytes)
+
+		// Mark as negative now conversion has been completed
+		decoded.Neg(decoded)
+	}
+	return decoded, nil
 }
