@@ -255,7 +255,6 @@ func (d *Decoder) push(v interface{}) {
 
 // Pop a value
 func (d *Decoder) pop() interface{} {
-	fmt.Printf("stack before = %#v\n", d.stack)
 	ln := len(d.stack) - 1
 	v := d.stack[ln]
 	d.stack = d.stack[:ln]
