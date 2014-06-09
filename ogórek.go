@@ -205,8 +205,12 @@ func (d Decoder) Decode() (interface{}, error) {
 			err = d.loadSetItem()
 		case opTuple:
 			err = d.loadTuple()
+		case opTuple1:
+			err = d.loadTuple1()
 		case opTuple2:
 			err = d.loadTuple2()
+		case opTuple3:
+			err = d.loadTuple3()
 		case opEmptyTuple:
 			d.push([]interface{}{})
 		case opSetitems:
@@ -609,8 +613,22 @@ func (d *Decoder) loadTuple() error {
 	return nil
 }
 
+func (d *Decoder) loadTuple1() error {
+	k := len(d.stack) - 1
+	v := append([]interface{}{}, d.stack[k:]...)
+	d.stack = append(d.stack[:k], v)
+	return nil
+}
+
 func (d *Decoder) loadTuple2() error {
 	k := len(d.stack) - 2
+	v := append([]interface{}{}, d.stack[k:]...)
+	d.stack = append(d.stack[:k], v)
+	return nil
+}
+
+func (d *Decoder) loadTuple3() error {
+	k := len(d.stack) - 3
 	v := append([]interface{}{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
