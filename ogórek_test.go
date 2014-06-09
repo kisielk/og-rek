@@ -41,6 +41,7 @@ func TestDecode(t *testing.T) {
 		{"tuple of two ints", "(I1\nI2\ntp0\n.", []interface{}{int64(1), int64(2)}},
 		{"nested tuples", "((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n.",
 			[]interface{}{[]interface{}{int64(1), int64(2)}, []interface{}{int64(3), int64(4)}}},
+		{"tuple with top 2 items from stack", "I0\nI1\n\x86.", []interface{}{int64(0), int64(1)}},
 		{"empty list", "(lp0\n.", []interface{}{}},
 		{"list of numbers", "(lp0\nI1\naI2\naI3\naI4\na.", []interface{}{int64(1), int64(2), int64(3), int64(4)}},
 		{"string", "S'abc'\np0\n.", string("abc")},
