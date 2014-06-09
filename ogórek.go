@@ -610,7 +610,7 @@ func (d *Decoder) loadTuple() error {
 }
 
 func (d *Decoder) loadTuple2() error {
-	k := d.marker()
+	k := len(d.stack) - 2
 	v := append([]interface{}{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
