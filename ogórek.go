@@ -527,8 +527,22 @@ func (d *Decoder) build() error {
 	return errNotImplemented
 }
 
+type Class struct {
+	module,
+	name string
+}
+
 func (d *Decoder) global() error {
-	return errNotImplemented
+	module, _, err := d.r.ReadLine()
+	if err != nil {
+		return nil
+	}
+	name, _, err := d.r.ReadLine()
+	if err != nil {
+		return nil
+	}
+	d.stack = append(d.stack, &Class{module: string(module), name: string(name)})
+	return nil
 }
 
 func (d *Decoder) loadDict() error {
