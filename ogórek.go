@@ -400,14 +400,14 @@ func (d *Decoder) loadBinPersid() error {
 }
 
 type Thunk struct {
-	class Class
-	args  []interface{}
+	Class Class
+	Args  []interface{}
 }
 
 func (d *Decoder) reduce() error {
 	args := d.pop().([]interface{})
 	class := d.pop().(Class)
-	d.stack = append(d.stack, Thunk{class: class, args: args})
+	d.stack = append(d.stack, Thunk{Class: class, Args: args})
 	return nil
 }
 
@@ -536,8 +536,8 @@ func (d *Decoder) build() error {
 }
 
 type Class struct {
-	module,
-	name string
+	Module,
+	Name string
 }
 
 func (d *Decoder) global() error {
@@ -549,7 +549,7 @@ func (d *Decoder) global() error {
 	if err != nil {
 		return nil
 	}
-	d.stack = append(d.stack, Class{module: string(module), name: string(name)})
+	d.stack = append(d.stack, Class{Module: string(module), Name: string(name)})
 	return nil
 }
 
