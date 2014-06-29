@@ -399,8 +399,16 @@ func (d *Decoder) loadBinPersid() error {
 	return errNotImplemented
 }
 
+type Thunk struct {
+	class Class
+	args  []interface{}
+}
+
 func (d *Decoder) reduce() error {
-	return errNotImplemented
+	args := d.pop().([]interface{})
+	class := d.pop().(Class)
+	d.stack = append(d.stack, Thunk{class: class, args: args})
+	return nil
 }
 
 func decodeStringEscape(b []byte) string {
@@ -541,7 +549,7 @@ func (d *Decoder) global() error {
 	if err != nil {
 		return nil
 	}
-	d.stack = append(d.stack, &Class{module: string(module), name: string(name)})
+	d.stack = append(d.stack, Class{module: string(module), name: string(name)})
 	return nil
 }
 
