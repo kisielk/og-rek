@@ -399,8 +399,16 @@ func (d *Decoder) loadBinPersid() error {
 	return errNotImplemented
 }
 
+type Call struct {
+	Callable Class
+	Args     []interface{}
+}
+
 func (d *Decoder) reduce() error {
-	return errNotImplemented
+	args := d.pop().([]interface{})
+	class := d.pop().(Class)
+	d.stack = append(d.stack, Call{Callable: class, Args: args})
+	return nil
 }
 
 func decodeStringEscape(b []byte) string {
@@ -527,8 +535,21 @@ func (d *Decoder) build() error {
 	return errNotImplemented
 }
 
+type Class struct {
+	Module, Name string
+}
+
 func (d *Decoder) global() error {
-	return errNotImplemented
+	module, _, err := d.r.ReadLine()
+	if err != nil {
+		return err
+	}
+	name, _, err := d.r.ReadLine()
+	if err != nil {
+		return err
+	}
+	d.stack = append(d.stack, Class{Module: string(module), Name: string(name)})
+	return nil
 }
 
 func (d *Decoder) loadDict() error {
