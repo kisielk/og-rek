@@ -399,15 +399,15 @@ func (d *Decoder) loadBinPersid() error {
 	return errNotImplemented
 }
 
-type Thunk struct {
-	Class Class
-	Args  []interface{}
+type Call struct {
+	Callable Class
+	Args     []interface{}
 }
 
 func (d *Decoder) reduce() error {
 	args := d.pop().([]interface{})
 	class := d.pop().(Class)
-	d.stack = append(d.stack, Thunk{Class: class, Args: args})
+	d.stack = append(d.stack, Call{Callable: class, Args: args})
 	return nil
 }
 
@@ -536,18 +536,17 @@ func (d *Decoder) build() error {
 }
 
 type Class struct {
-	Module,
-	Name string
+	Module, Name string
 }
 
 func (d *Decoder) global() error {
 	module, _, err := d.r.ReadLine()
 	if err != nil {
-		return nil
+		return err
 	}
 	name, _, err := d.r.ReadLine()
 	if err != nil {
-		return nil
+		return err
 	}
 	d.stack = append(d.stack, Class{Module: string(module), Name: string(name)})
 	return nil
