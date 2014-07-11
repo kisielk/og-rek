@@ -430,7 +430,7 @@ func (d *Decoder) loadString() error {
 	case '"':
 		delim = '"'
 	default:
-		return fmt.Errorf("invalid string delimiter: %s", line[0])
+		return fmt.Errorf("invalid string delimiter: %c", line[0])
 	}
 
 	if line[len(line)-1] != delim {
