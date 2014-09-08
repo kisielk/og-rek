@@ -105,7 +105,8 @@ type Decoder struct {
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
 func NewDecoder(r io.Reader) Decoder {
-	reader := bufio.NewReader(r)
+	// Use a 100k buffer for the reader.
+	reader := bufio.NewReaderSize(r, 102400)
 	return Decoder{reader, make([]interface{}, 0), make(map[string]interface{})}
 }
 
