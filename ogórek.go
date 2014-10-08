@@ -105,7 +105,8 @@ type Decoder struct {
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
 func NewDecoder(r io.Reader) Decoder {
-	reader := bufio.NewReader(r)
+	// Use a 100k buffer for the reader.
+	reader := bufio.NewReaderSize(r, 102400)
 	return Decoder{reader, make([]interface{}, 0), make(map[string]interface{})}
 }
 
@@ -477,7 +478,7 @@ func (d *Decoder) loadUnicode() error {
 
 	buf := bytes.Buffer{}
 
-	for len(sline) >= 6 {
+	for len(sline) >= 1 {
 		var r rune
 		var err error
 		r, _, sline, err = strconv.UnquoteChar(sline, '\'')
