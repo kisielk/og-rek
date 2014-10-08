@@ -185,10 +185,6 @@ func (e *Encoder) encodeStruct(st reflect.Value) {
 		return
 	}
 
-	e.w.Write([]byte{opEmptyDict})
-
-	l := typ.NumField()
-
 	structTags := getStructTags(st)
 
 	e.w.Write([]byte{opEmptyDict, opMark})
@@ -199,6 +195,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) {
 			e.encode(st.Field(i))
 		}
 	} else {
+		l := typ.NumField()
 		for i := 0; i < l; i++ {
 			fty := typ.Field(i)
 			if fty.PkgPath != "" {

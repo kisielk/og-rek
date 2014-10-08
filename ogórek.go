@@ -676,7 +676,14 @@ func (d *Decoder) binPut() error {
 }
 
 func (d *Decoder) longBinPut() error {
-	return errNotImplemented
+	var b [4]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	v := binary.LittleEndian.Uint32(b[:])
+	d.memo[strconv.Itoa(int(v))] = d.stack[len(d.stack)-1]
+	return nil
 }
 
 func (d *Decoder) loadSetItem() error {
