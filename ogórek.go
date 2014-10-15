@@ -80,6 +80,7 @@ const (
 
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
+var ErrNoMarker = errors.New("no marker in stack")
 
 type OpcodeError struct {
 	Key byte
@@ -243,15 +244,15 @@ func (d *Decoder) mark() {
 }
 
 // Return the position of the topmost marker
-func (d *Decoder) marker() int {
+func (d *Decoder) marker() (int, error) {
 	m := mark{}
 	var k int
 	for k = len(d.stack) - 1; d.stack[k] != m && k > 0; k-- {
 	}
 	if k >= 0 {
-		return k
+		return k, nil
 	}
-	panic("no marker in stack")
+	return 0, ErrNoMarker
 }
 
 // Append a new value
@@ -553,7 +554,11 @@ func (d *Decoder) global() error {
 }
 
 func (d *Decoder) loadDict() error {
-	k := d.marker()
+	k, err := d.marker()
+	if err != nil {
+		return err
+	}
+
 	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
 	for i := 0; i < len(items); i += 2 {
@@ -570,7 +575,11 @@ func (d *Decoder) loadEmptyDict() error {
 }
 
 func (d *Decoder) loadAppends() error {
-	k := d.marker()
+	k, err := d.marker()
+	if err != nil {
+		return err
+	}
+
 	l := d.stack[k-1]
 	switch l.(type) {
 	case []interface{}:
@@ -621,14 +630,22 @@ func (d *Decoder) loadBool(b bool) error {
 }
 
 func (d *Decoder) loadList() error {
-	k := d.marker()
+	k, err := d.marker()
+	if err != nil {
+		return err
+	}
+
 	v := append([]interface{}{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
 
 func (d *Decoder) loadTuple() error {
-	k := d.marker()
+	k, err := d.marker()
+	if err != nil {
+		return err
+	}
+
 	v := append([]interface{}{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
@@ -700,7 +717,11 @@ func (d *Decoder) loadSetItem() error {
 }
 
 func (d *Decoder) loadSetItems() error {
-	k := d.marker()
+	k, err := d.marker()
+	if err != nil {
+		return err
+	}
+
 	l := d.stack[k-1]
 	switch m := l.(type) {
 	case map[interface{}]interface{}:
