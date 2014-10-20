@@ -218,8 +218,8 @@ func (d Decoder) Decode() (interface{}, error) {
 		case opBinfloat:
 			err = d.binFloat()
 		case opProto:
-			v, _ := d.r.ReadByte()
-			if v != 2 {
+			v, err := d.r.ReadByte()
+			if err == nil && v != 2 {
 				err = ErrInvalidPickleVersion
 			}
 
@@ -331,7 +331,10 @@ func (d *Decoder) loadBinInt() error {
 
 // Push a 1-byte unsigned int
 func (d *Decoder) loadBinInt1() error {
-	b, _ := d.r.ReadByte()
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
 	d.push(int64(b))
 	return nil
 }
@@ -458,9 +461,13 @@ func (d *Decoder) loadBinString() error {
 }
 
 func (d *Decoder) loadShortBinString() error {
-	b, _ := d.r.ReadByte()
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
+
 	s := make([]byte, b)
-	_, err := io.ReadFull(d.r, s)
+	_, err = io.ReadFull(d.r, s)
 	if err != nil {
 		return err
 	}
@@ -595,7 +602,11 @@ func (d *Decoder) get() error {
 }
 
 func (d *Decoder) binGet() error {
-	b, _ := d.r.ReadByte()
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
+
 	d.push(d.memo[strconv.Itoa(int(b))])
 	return nil
 }
@@ -669,7 +680,11 @@ func (d *Decoder) loadPut() error {
 }
 
 func (d *Decoder) binPut() error {
-	b, _ := d.r.ReadByte()
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
+
 	d.memo[strconv.Itoa(int(b))] = d.stack[len(d.stack)-1]
 	return nil
 }
