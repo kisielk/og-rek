@@ -80,7 +80,7 @@ const (
 
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
-var ErrNoMarker = errors.New("no marker in stack")
+var errNoMarker = errors.New("no marker in stack")
 
 type OpcodeError struct {
 	Key byte
@@ -252,7 +252,7 @@ func (d *Decoder) marker() (int, error) {
 	if k >= 0 {
 		return k, nil
 	}
-	return 0, ErrNoMarker
+	return 0, errNoMarker
 }
 
 // Append a new value
