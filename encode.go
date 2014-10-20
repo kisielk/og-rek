@@ -8,6 +8,14 @@ import (
 	"reflect"
 )
 
+type TypeError struct {
+	typ string
+}
+
+func (te *TypeError) Error() string {
+	return fmt.Sprintf("no support for type '%s'", te.typ)
+}
+
 // An Encoder encodes Go data structures into pickle byte stream
 type Encoder struct {
 	w io.Writer
@@ -74,7 +82,7 @@ func (e *Encoder) encode(rv reflect.Value) error {
 		_, err := e.w.Write([]byte{opNone})
 		return err
 	default:
-		panic(fmt.Sprintf("no support for type '%s'", rk.String()))
+		return &TypeError{typ: rk.String()}
 	}
 
 	return nil

@@ -18,7 +18,11 @@ func TestMarker(t *testing.T) {
 	buf := bytes.Buffer{}
 	dec := NewDecoder(&buf)
 	dec.mark()
-	if dec.marker() != 0 {
+	k, err := dec.marker()
+	if err != nil {
+		t.Error(err)
+	}
+	if k != 0 {
 		t.Error("no marker found")
 	}
 }
