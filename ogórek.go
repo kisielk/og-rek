@@ -422,7 +422,7 @@ func decodeStringEscape(b []byte) string {
 
 // Push a string
 func (d *Decoder) loadString() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.r.ReadBytes('\n')
 	if err != nil {
 		return err
 	}
@@ -437,11 +437,11 @@ func (d *Decoder) loadString() error {
 		return fmt.Errorf("invalid string delimiter: %c", line[0])
 	}
 
-	if line[len(line)-1] != delim {
+	if line[len(line)-2] != delim {
 		return fmt.Errorf("insecure string")
 	}
 
-	d.push(decodeStringEscape(line[1 : len(line)-1]))
+	d.push(decodeStringEscape(line[1 : len(line)-2]))
 	return nil
 }
 
