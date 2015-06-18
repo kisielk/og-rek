@@ -1,7 +1,7 @@
-// Package ogórek is a library for decoding Python's pickle format.
+// Package gopickle is a library for decoding Python's pickle format.
 //
-// ogórek is Polish for "pickle".
-package ogórek
+// gopickle is Polish for "pickle".
+package gopickle
 
 import (
 	"bufio"
@@ -238,6 +238,22 @@ func (d Decoder) Decode() (interface{}, error) {
 	return d.pop(), nil
 }
 
+func (d *Decoder) readLine() ([]byte, error) {
+	var has_more bool = true
+	var line []byte = []byte{}
+	for has_more {
+		read_data, is_prefix, err := d.r.ReadLine()
+		if err != nil {
+			return line, err
+		}
+		has_more = is_prefix
+		for i := 0; i < len(read_data); i++ {
+			line = append(line, read_data[i])
+		}
+	}
+	return line, nil
+}
+
 // Push a marker
 func (d *Decoder) mark() {
 	d.push(mark{})
@@ -280,7 +296,7 @@ func (d *Decoder) dup() {
 
 // Push a float
 func (d *Decoder) loadFloat() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -294,7 +310,7 @@ func (d *Decoder) loadFloat() error {
 
 // Push an int
 func (d *Decoder) loadInt() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -342,7 +358,7 @@ func (d *Decoder) loadBinInt1() error {
 
 // Push a long
 func (d *Decoder) loadLong() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -422,7 +438,7 @@ func decodeStringEscape(b []byte) string {
 
 // Push a string
 func (d *Decoder) loadString() error {
-	line, err := d.r.ReadBytes('\n')
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -437,11 +453,11 @@ func (d *Decoder) loadString() error {
 		return fmt.Errorf("invalid string delimiter: %c", line[0])
 	}
 
-	if line[len(line)-2] != delim {
+	if line[len(line)-1] != delim {
 		return fmt.Errorf("insecure string")
 	}
 
-	d.push(decodeStringEscape(line[1 : len(line)-2]))
+	d.push(decodeStringEscape(line[1 : len(line)-1]))
 	return nil
 }
 
@@ -477,7 +493,8 @@ func (d *Decoder) loadShortBinString() error {
 }
 
 func (d *Decoder) loadUnicode() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
+
 	if err != nil {
 		return err
 	}
@@ -485,9 +502,10 @@ func (d *Decoder) loadUnicode() error {
 
 	buf := bytes.Buffer{}
 
-	for len(sline) >= 6 {
+	for len(sline) > 0 {
 		var r rune
 		var err error
+
 		r, _, sline, err = strconv.UnquoteChar(sline, '\'')
 		if err != nil {
 			return err
@@ -548,11 +566,11 @@ type Class struct {
 }
 
 func (d *Decoder) global() error {
-	module, _, err := d.r.ReadLine()
+	module, err := d.readLine()
 	if err != nil {
 		return err
 	}
-	name, _, err := d.r.ReadLine()
+	name, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -602,7 +620,7 @@ func (d *Decoder) loadAppends() error {
 }
 
 func (d *Decoder) get() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -688,7 +706,7 @@ func (d *Decoder) obj() error {
 }
 
 func (d *Decoder) loadPut() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
