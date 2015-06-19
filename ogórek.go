@@ -1,7 +1,7 @@
 // Package gopickle is a library for decoding Python's pickle format.
 //
 // gopickle is Polish for "pickle".
-package gopickle
+package ogórek
 
 import (
 	"bufio"
