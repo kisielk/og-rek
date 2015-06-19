@@ -489,6 +489,7 @@ func (d *Decoder) loadUnicode() error {
 		var r rune
 		var err error
 		for len(sline) > 0 && sline[0] == '\'' {
+			buf.WriteByte(sline[0])
 			sline = sline[1:]
 		}
 		if len(sline) == 0 {
