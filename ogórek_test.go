@@ -52,6 +52,7 @@ func TestDecode(t *testing.T) {
 		{"list of numbers", "(lp0\nI1\naI2\naI3\naI4\na.", []interface{}{int64(1), int64(2), int64(3), int64(4)}},
 		{"string", "S'abc'\np0\n.", string("abc")},
 		{"unicode", "V\\u65e5\\u672c\\u8a9e\np0\n.", string("日本語")},
+		{"unicode", "V' \\u77e5\\u4e8b\\u5c11\\u65f6\\u70e6\\u607c\\u5c11\\u3001\\u8bc6\\u4eba\\u591a\\u5904\\u662f\\u975e\\u591a\\u3002", string("' 知事少时烦恼少、识人多处是非多。")},
 		{"empty dict", "(dp0\n.", make(map[interface{}]interface{})},
 		{"dict with strings", "(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.", map[interface{}]interface{}{"a": "1", "b": "2"}},
 		{"GLOBAL and REDUCE opcodes", "cfoo\nbar\nS'bing'\n\x85R.", Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}}},

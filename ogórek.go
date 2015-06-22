@@ -488,6 +488,13 @@ func (d *Decoder) loadUnicode() error {
 	for len(sline) >= 6 {
 		var r rune
 		var err error
+		for len(sline) > 0 && sline[0] == '\'' {
+			buf.WriteByte(sline[0])
+			sline = sline[1:]
+		}
+		if len(sline) == 0 {
+			break
+		}
 		r, _, sline, err = strconv.UnquoteChar(sline, '\'')
 		if err != nil {
 			return err
