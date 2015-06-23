@@ -1,6 +1,6 @@
-// Package gopickle is a library for decoding Python's pickle format.
+// Package ogórek is a library for decoding Python's pickle format.
 //
-// gopickle is Polish for "pickle".
+// ogórek is Polish for "pickle".
 package ogórek
 
 import (
@@ -247,9 +247,7 @@ func (d *Decoder) readLine() ([]byte, error) {
 			return line, err
 		}
 		has_more = is_prefix
-		for i := 0; i < len(read_data); i++ {
-			line = append(line, read_data[i])
-		}
+		line = append(line, read_data...)
 	}
 	return line, nil
 }
