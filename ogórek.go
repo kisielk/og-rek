@@ -239,15 +239,18 @@ func (d Decoder) Decode() (interface{}, error) {
 }
 
 func (d *Decoder) readLine() ([]byte, error) {
-	var has_more bool = true
-	var line []byte = []byte{}
-	for has_more {
-		read_data, is_prefix, err := d.r.ReadLine()
+	var (
+		line     []byte
+		data     []byte
+		isPrefix = true
+		err      error
+	)
+	for isPrefix {
+		data, isPrefix, err = d.r.ReadLine()
 		if err != nil {
 			return line, err
 		}
-		has_more = is_prefix
-		line = append(line, read_data...)
+		line = append(line, data...)
 	}
 	return line, nil
 }
