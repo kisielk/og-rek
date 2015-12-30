@@ -176,3 +176,16 @@ func BenchmarkSpeed(b *testing.B) {
 		}
 	}
 }
+
+func TestMemoOpCode(t *testing.T) {
+	buf := bytes.NewBufferString("I5\n\x94.")
+	dec := NewDecoder(buf)
+	_, err := dec.Decode()
+	if err != nil {
+		t.Errorf("Error from TestMemoOpCode - %v\n", err)
+	}
+	if dec.memo["0"] != int64(5) {
+		t.Errorf("Error from TestMemoOpCode - Top stack value was not added to memo")
+	}
+
+}
