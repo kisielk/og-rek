@@ -797,6 +797,8 @@ func (d *Decoder) binFloat() error {
 	return nil
 }
 
+// loadFrame discards the framing opcode+information, this information is useful to do one large read (instead of many small reads)
+// https://www.python.org/dev/peps/pep-3154/#framing
 func (d *Decoder) loadFrame() error {
 	var b [8]byte
 	_, err := io.ReadFull(d.r, b[:])
