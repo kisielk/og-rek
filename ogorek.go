@@ -76,6 +76,11 @@ const (
 	opNewfalse = '\x89' // push False
 	opLong1    = '\x8a' // push long from < 256 bytes
 	opLong4    = '\x8b' // push really big long
+
+	// Protocol 4
+	opShortBinUnicode = '\x8c' // push short string; UTF-8 length < 256 bytes
+	opMemoize         = '\x94' // store top of the stack in memo
+	opFrame           = '\x95' // indicate the beginning of a new frame
 )
 
 var errNotImplemented = errors.New("unimplemented opcode")
@@ -218,6 +223,12 @@ func (d Decoder) Decode() (interface{}, error) {
 			err = d.loadSetItems()
 		case opBinfloat:
 			err = d.binFloat()
+		case opFrame:
+			err = d.loadFrame()
+		case opShortBinUnicode:
+			err = d.loadShortBinUnicode()
+		case opMemoize:
+			err = d.loadMemoize()
 		case opProto:
 			v, err := d.r.ReadByte()
 			if err == nil && v != 2 {
@@ -783,6 +794,37 @@ func (d *Decoder) binFloat() error {
 	}
 	u := binary.BigEndian.Uint64(b[:])
 	d.stack = append(d.stack, math.Float64frombits(u))
+	return nil
+}
+
+// loadFrame discards the framing opcode+information, this information is useful to do one large read (instead of many small reads)
+// https://www.python.org/dev/peps/pep-3154/#framing
+func (d *Decoder) loadFrame() error {
+	var b [8]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Decoder) loadShortBinUnicode() error {
+	b, err := d.r.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	s := make([]byte, b)
+	_, err = io.ReadFull(d.r, s)
+	if err != nil {
+		return err
+	}
+	d.push(string(s))
+	return nil
+}
+
+func (d *Decoder) loadMemoize() error {
+	d.memo[strconv.Itoa(len(d.memo))] = d.stack[len(d.stack)-1]
 	return nil
 }
 
