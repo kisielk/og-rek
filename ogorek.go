@@ -85,7 +85,7 @@ const (
 
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
-var errNoMarker = errors.New("no marker in stack")
+var ErrInvalidStack = errors.New("invalid stack contents for operation")
 
 type OpcodeError struct {
 	Key byte
@@ -273,14 +273,17 @@ func (d *Decoder) mark() {
 
 // Return the position of the topmost marker
 func (d *Decoder) marker() (int, error) {
+	if len(d.stack) < 1 {
+		return -1, ErrInvalidStack
+	}
 	m := mark{}
 	var k int
 	for k = len(d.stack) - 1; d.stack[k] != m && k > 0; k-- {
 	}
-	if k >= 0 {
-		return k, nil
+	if d.stack[k] != m {
+		return -1, ErrInvalidStack
 	}
-	return 0, errNoMarker
+	return k, nil
 }
 
 // Append a new value
