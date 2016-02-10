@@ -85,7 +85,8 @@ const (
 
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
-var errNoMarker = errors.New("no marker in stack")
+var ErrInvalidStack = errors.New("invalid stack contents for operation")
+var ErrInvalidArgument = errors.New("invalid argument for operation")
 
 type OpcodeError struct {
 	Key byte
@@ -250,20 +251,11 @@ func (d Decoder) Decode() (interface{}, error) {
 }
 
 func (d *Decoder) readLine() ([]byte, error) {
-	var (
-		line     []byte
-		data     []byte
-		isPrefix = true
-		err      error
-	)
-	for isPrefix {
-		data, isPrefix, err = d.r.ReadLine()
-		if err != nil {
-			return line, err
-		}
-		line = append(line, data...)
+	line, err := d.r.ReadBytes('\n')
+	if err != nil {
+		return line, err
 	}
-	return line, nil
+	return line[:len(line)-1], nil
 }
 
 // Push a marker
@@ -273,14 +265,17 @@ func (d *Decoder) mark() {
 
 // Return the position of the topmost marker
 func (d *Decoder) marker() (int, error) {
+	if len(d.stack) < 1 {
+		return -1, ErrInvalidStack
+	}
 	m := mark{}
 	var k int
 	for k = len(d.stack) - 1; d.stack[k] != m && k > 0; k-- {
 	}
-	if k >= 0 {
-		return k, nil
+	if d.stack[k] != m {
+		return -1, ErrInvalidStack
 	}
-	return 0, errNoMarker
+	return k, nil
 }
 
 // Append a new value
@@ -374,8 +369,14 @@ func (d *Decoder) loadLong() error {
 	if err != nil {
 		return err
 	}
+	if len(line) < 1 {
+		return ErrInvalidArgument
+	}
 	v := new(big.Int)
-	v.SetString(string(line[:len(line)-1]), 10)
+	_, valid := v.SetString(string(line[:len(line)-1]), 10)
+	if !valid {
+		return ErrInvalidArgument
+	}
 	d.push(v)
 	return nil
 }
@@ -437,8 +438,17 @@ type Call struct {
 }
 
 func (d *Decoder) reduce() error {
-	args := d.pop().([]interface{})
-	class := d.pop().(Class)
+	if len(d.stack) < 2 {
+		return ErrInvalidStack
+	}
+	args, ok := d.pop().([]interface{})
+	if !ok {
+		return ErrInvalidStack
+	}
+	class, ok := d.pop().(Class)
+	if !ok {
+		return ErrInvalidStack
+	}
 	d.stack = append(d.stack, Call{Callable: class, Args: args})
 	return nil
 }
@@ -453,6 +463,9 @@ func (d *Decoder) loadString() error {
 	line, err := d.readLine()
 	if err != nil {
 		return err
+	}
+	if len(line) < 1 {
+		return ErrInvalidArgument
 	}
 
 	var delim byte
@@ -563,6 +576,9 @@ func (d *Decoder) loadBinUnicode() error {
 }
 
 func (d *Decoder) loadAppend() error {
+	if len(d.stack) < 2 {
+		return ErrInvalidStack
+	}
 	v := d.pop()
 	l := d.stack[len(d.stack)-1]
 	switch l.(type) {
@@ -604,6 +620,9 @@ func (d *Decoder) loadDict() error {
 
 	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
+	if len(items)%2 != 0 {
+		return ErrInvalidStack
+	}
 	for i := 0; i < len(items); i += 2 {
 		m[items[i]] = items[i+1]
 	}
@@ -699,6 +718,9 @@ func (d *Decoder) loadTuple() error {
 }
 
 func (d *Decoder) loadTuple1() error {
+	if len(d.stack) < 1 {
+		return ErrInvalidStack
+	}
 	k := len(d.stack) - 1
 	v := append([]interface{}{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
@@ -706,6 +728,9 @@ func (d *Decoder) loadTuple1() error {
 }
 
 func (d *Decoder) loadTuple2() error {
+	if len(d.stack) < 2 {
+		return ErrInvalidStack
+	}
 	k := len(d.stack) - 2
 	v := append([]interface{}{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
@@ -713,6 +738,9 @@ func (d *Decoder) loadTuple2() error {
 }
 
 func (d *Decoder) loadTuple3() error {
+	if len(d.stack) < 3 {
+		return ErrInvalidStack
+	}
 	k := len(d.stack) - 3
 	v := append([]interface{}{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
@@ -728,11 +756,17 @@ func (d *Decoder) loadPut() error {
 	if err != nil {
 		return err
 	}
+	if len(d.stack) < 1 {
+		return ErrInvalidStack
+	}
 	d.memo[string(line)] = d.stack[len(d.stack)-1]
 	return nil
 }
 
 func (d *Decoder) binPut() error {
+	if len(d.stack) < 1 {
+		return ErrInvalidStack
+	}
 	b, err := d.r.ReadByte()
 	if err != nil {
 		return err
@@ -743,6 +777,9 @@ func (d *Decoder) binPut() error {
 }
 
 func (d *Decoder) longBinPut() error {
+	if len(d.stack) < 1 {
+		return ErrInvalidStack
+	}
 	var b [4]byte
 	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
@@ -754,6 +791,9 @@ func (d *Decoder) longBinPut() error {
 }
 
 func (d *Decoder) loadSetItem() error {
+	if len(d.stack) < 3 {
+		return ErrInvalidStack
+	}
 	v := d.pop()
 	k := d.pop()
 	m := d.stack[len(d.stack)-1]
@@ -773,6 +813,9 @@ func (d *Decoder) loadSetItems() error {
 		return err
 	}
 
+	if k < 1 {
+		return ErrInvalidStack
+	}
 	l := d.stack[k-1]
 	switch m := l.(type) {
 	case map[interface{}]interface{}:
@@ -824,6 +867,9 @@ func (d *Decoder) loadShortBinUnicode() error {
 }
 
 func (d *Decoder) loadMemoize() error {
+	if len(d.stack) < 1 {
+		return ErrInvalidStack
+	}
 	d.memo[strconv.Itoa(len(d.memo))] = d.stack[len(d.stack)-1]
 	return nil
 }
