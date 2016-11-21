@@ -12,6 +12,11 @@ type TypeError struct {
 	typ string
 }
 
+// PickleMarshaler is the interface implemented by an object that can marshal itself into a textual form.
+type PickleMarshaler interface {
+	MarshalPickle() (text []byte, err error)
+}
+
 func (te *TypeError) Error() string {
 	return fmt.Sprintf("no support for type '%s'", te.typ)
 }
@@ -70,6 +75,12 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Ptr:
 
 		if rv.Elem().Kind() == reflect.Struct {
+			if m, ok := rv.Interface().(PickleMarshaler); ok {
+				b, err := m.MarshalPickle()
+				e.w.Write(b)
+				return err
+			}
+
 			switch rv.Elem().Interface().(type) {
 			case None:
 				return e.encodeStruct(rv.Elem())

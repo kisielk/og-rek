@@ -54,3 +54,23 @@ func TestEncode(t *testing.T) {
 
 	}
 }
+
+type testMarshalPickle struct {
+}
+
+func (p *testMarshalPickle) MarshalPickle() (text []byte, err error) {
+	return []byte("(lp0\nI1\naI2\na"), nil
+}
+func TestMarshalPickle(t *testing.T) {
+	testData := map[string]interface{}{
+		"key": &testMarshalPickle{},
+	}
+
+	p := &bytes.Buffer{}
+	e := NewEncoder(p)
+	e.Encode(testData)
+
+	if p.String() != "}(U\x03key(lp0\nI1\naI2\nau." {
+		t.FailNow()
+	}
+}
