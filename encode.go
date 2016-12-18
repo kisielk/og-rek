@@ -12,8 +12,8 @@ type TypeError struct {
 	typ string
 }
 
-// PickleMarshaler is the interface implemented by an object that can marshal itself into a textual form.
-type PickleMarshaler interface {
+// Marshaler is the interface implemented by an object that can marshal itself into a binary form.
+type Marshaler interface {
 	MarshalPickle() (text []byte, err error)
 }
 
@@ -75,7 +75,7 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Ptr:
 
 		if rv.Elem().Kind() == reflect.Struct {
-			if m, ok := rv.Interface().(PickleMarshaler); ok {
+			if m, ok := rv.Interface().(Marshaler); ok {
 				b, err := m.MarshalPickle()
 				e.w.Write(b)
 				return err
