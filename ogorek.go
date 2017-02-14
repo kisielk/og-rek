@@ -119,20 +119,23 @@ func NewDecoder(r io.Reader) Decoder {
 func (d Decoder) Decode() (interface{}, error) {
 
 	insn := 0
+loop:
 	for {
-		insn++
 		key, err := d.r.ReadByte()
-		if err == io.EOF {
-			break
-		} else if err != nil {
+		if err != nil {
+			if err == io.EOF && insn != 0 {
+				err = io.ErrUnexpectedEOF
+			}
 			return nil, err
 		}
+
+		insn++
 
 		switch key {
 		case opMark:
 			d.mark()
 		case opStop:
-			break
+			break loop
 		case opPop:
 			d.pop()
 		case opPopMark:

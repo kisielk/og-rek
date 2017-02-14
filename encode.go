@@ -29,9 +29,12 @@ func NewEncoder(w io.Writer) *Encoder {
 // Encode writes the pickle encoding of v to w, the encoder's writer
 func (e *Encoder) Encode(v interface{}) error {
 	rv := reflectValueOf(v)
-	e.encode(rv)
-	e.w.Write([]byte{opStop})
-	return nil
+	err := e.encode(rv)
+	if err != nil {
+		return err
+	}
+	_, err = e.w.Write([]byte{opStop})
+	return err
 }
 
 func (e *Encoder) encode(rv reflect.Value) error {
