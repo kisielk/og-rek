@@ -78,6 +78,28 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+// test that .Decode() decodes only until stop opcode, and can continue
+// decoding further on next call
+func TestDecodeMultiple(t *testing.T) {
+	input := "I5\n.I7\n.N."
+	expected := []interface{}{int64(5), int64(7), None{}}
+
+	buf := bytes.NewBufferString(input)
+	dec := NewDecoder(buf)
+
+	for i, objOk := range expected {
+		obj, err := dec.Decode()
+		if err != nil {
+			t.Errorf("step #%v: %v", i, err)
+		}
+
+		if !reflect.DeepEqual(obj, objOk) {
+			t.Errorf("step #%v: %q  ; want %q", i, obj, objOk)
+		}
+	}
+}
+
+
 func TestZeroLengthData(t *testing.T) {
 	data := ""
 	output, err := decodeLong(data)

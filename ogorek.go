@@ -119,6 +119,7 @@ func NewDecoder(r io.Reader) Decoder {
 func (d Decoder) Decode() (interface{}, error) {
 
 	insn := 0
+loop:
 	for {
 		insn++
 		key, err := d.r.ReadByte()
@@ -132,7 +133,7 @@ func (d Decoder) Decode() (interface{}, error) {
 		case opMark:
 			d.mark()
 		case opStop:
-			break
+			break loop
 		case opPop:
 			d.pop()
 		case opPopMark:
