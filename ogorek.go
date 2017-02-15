@@ -531,10 +531,7 @@ func (d *Decoder) loadUnicode() error {
 		if err != nil {
 			return err
 		}
-		_, err = buf.WriteRune(r)
-		if err != nil {
-			return err
-		}
+		buf.WriteRune(r)
 	}
 	if len(sline) > 0 {
 		return fmt.Errorf("characters remaining after loadUnicode operation: %s", sline)
