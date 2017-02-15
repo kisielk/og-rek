@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -81,6 +83,23 @@ func TestDecode(t *testing.T) {
 		if !(v == nil && err == io.EOF) {
 			t.Errorf("decode: no EOF at end: v = %#v  err = %#v", v, err)
 		}
+
+		// for truncated input io.ErrUnexpectedEOF must be returned
+		for l := len(test.input) - 1; l > 0; l-- {
+			buf := bytes.NewBufferString(test.input[:l])
+			dec := NewDecoder(buf)
+			//println(test.name, l)
+			v, err := dec.Decode()
+			// strconv.UnquoteChar used in loadUnicode always returns
+			// SyntaxError, at least unless the following CL is accepted:
+			// https://go-review.googlesource.com/37052
+			if err == strconv.ErrSyntax && strings.HasPrefix(test.name, "unicode") {
+				err = io.ErrUnexpectedEOF
+			}
+			if !(v == nil && err == io.ErrUnexpectedEOF) {
+				t.Errorf("%s: no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", test.name, l, v, err)
+			}
+		}
 	}
 }
 
@@ -107,17 +126,6 @@ func TestDecodeMultiple(t *testing.T) {
 	obj, err := dec.Decode()
 	if !(obj == nil && err == io.EOF) {
 		t.Errorf("decode: no EOF at end: obj = %#v  err = %#v", obj, err)
-	}
-}
-
-func TestDecodeUnexpectedEOF(t *testing.T) {
-	input := "I5\n"
-	buf := bytes.NewBufferString(input)
-	dec := NewDecoder(buf)
-
-	obj, err := dec.Decode()
-	if !(obj == nil && err == io.ErrUnexpectedEOF) {
-		t.Errorf("decode: no ErrUnexpectedEOF on truncated stream: obj = %#v  err = %#v", obj, err)
 	}
 }
 

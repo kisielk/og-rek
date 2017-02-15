@@ -246,6 +246,10 @@ loop:
 			if err == errNotImplemented {
 				return nil, OpcodeError{key, insn}
 			}
+			// EOF from individual opcode decoder is unexpected end of stream
+			if err == io.EOF {
+				err = io.ErrUnexpectedEOF
+			}
 			return nil, err
 		}
 	}
@@ -468,8 +472,8 @@ func (d *Decoder) loadString() error {
 		return fmt.Errorf("invalid string delimiter: %c", line[0])
 	}
 
-	if line[len(line)-1] != delim {
-		return fmt.Errorf("insecure string")
+	if len(line) < 2 || line[len(line)-1] != delim {
+		return io.ErrUnexpectedEOF
 	}
 
 	d.push(decodeStringEscape(line[1 : len(line)-1]))
