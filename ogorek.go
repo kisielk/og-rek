@@ -492,13 +492,12 @@ func (d *Decoder) loadBinString() error {
 	}
 	v := binary.LittleEndian.Uint32(b[:])
 
-	// TODO: use d.buf to reduce allocations?
-	s := make([]byte, v)
-	_, err = io.ReadFull(d.r, s)
+	d.buf.Reset()
+	_, err = io.CopyN(&d.buf, d.r, int64(v))
 	if err != nil {
 		return err
 	}
-	d.push(string(s))
+	d.push(d.buf.String())
 	return nil
 }
 
@@ -508,13 +507,12 @@ func (d *Decoder) loadShortBinString() error {
 		return err
 	}
 
-	// TODO: use d.buf to reduce allocations?
-	s := make([]byte, b)
-	_, err = io.ReadFull(d.r, s)
+	d.buf.Reset()
+	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
 	}
-	d.push(string(s))
+	d.push(d.buf.String())
 	return nil
 }
 
@@ -825,13 +823,12 @@ func (d *Decoder) loadShortBinUnicode() error {
 		return err
 	}
 
-	// TODO: use d.buf to save allocations?
-	s := make([]byte, b)
-	_, err = io.ReadFull(d.r, s)
+	d.buf.Reset()
+	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
 	}
-	d.push(string(s))
+	d.push(d.buf.String())
 	return nil
 }
 
