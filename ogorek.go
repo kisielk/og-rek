@@ -107,12 +107,16 @@ type Decoder struct {
 	r     *bufio.Reader
 	stack []interface{}
 	memo  map[string]interface{}
+
+	// a reusable buffer that can be used by the various decoding functions
+	// functions using this should call buf.Reset to clear the old contents
+	buf bytes.Buffer
 }
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
 func NewDecoder(r io.Reader) Decoder {
 	reader := bufio.NewReader(r)
-	return Decoder{reader, make([]interface{}, 0), make(map[string]interface{})}
+	return Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
 }
 
 // Decode decodes the pickle stream and returns the result or an error.
@@ -487,6 +491,8 @@ func (d *Decoder) loadBinString() error {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
+
+	// TODO: use d.buf to reduce allocations?
 	s := make([]byte, v)
 	_, err = io.ReadFull(d.r, s)
 	if err != nil {
@@ -502,6 +508,7 @@ func (d *Decoder) loadShortBinString() error {
 		return err
 	}
 
+	// TODO: use d.buf to reduce allocations?
 	s := make([]byte, b)
 	_, err = io.ReadFull(d.r, s)
 	if err != nil {
@@ -519,13 +526,13 @@ func (d *Decoder) loadUnicode() error {
 	}
 	sline := string(line)
 
-	buf := bytes.Buffer{}
+	d.buf.Reset()
 
 	for len(sline) > 0 {
 		var r rune
 		var err error
 		for len(sline) > 0 && sline[0] == '\'' {
-			buf.WriteByte(sline[0])
+			d.buf.WriteByte(sline[0])
 			sline = sline[1:]
 		}
 		if len(sline) == 0 {
@@ -535,13 +542,13 @@ func (d *Decoder) loadUnicode() error {
 		if err != nil {
 			return err
 		}
-		buf.WriteRune(r)
+		d.buf.WriteRune(r)
 	}
 	if len(sline) > 0 {
 		return fmt.Errorf("characters remaining after loadUnicode operation: %s", sline)
 	}
 
-	d.push(buf.String())
+	d.push(d.buf.String())
 	return nil
 }
 
@@ -818,6 +825,7 @@ func (d *Decoder) loadShortBinUnicode() error {
 		return err
 	}
 
+	// TODO: use d.buf to save allocations?
 	s := make([]byte, b)
 	_, err = io.ReadFull(d.r, s)
 	if err != nil {
