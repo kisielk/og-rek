@@ -255,3 +255,15 @@ func TestMemoOpCode(t *testing.T) {
 	}
 
 }
+
+func TestFuzzCrashers(t *testing.T) {
+	crashers := []string{
+		"(dS''\n(lc\n\na2a2a22aasS''\na",
+	}
+
+	for _, c := range crashers {
+		buf := bytes.NewBufferString(c)
+		dec := NewDecoder(buf)
+		dec.Decode()
+	}
+}
