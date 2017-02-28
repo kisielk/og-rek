@@ -100,6 +100,21 @@ func TestDecode(t *testing.T) {
 				t.Errorf("%s: no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", test.name, l, v, err)
 			}
 		}
+
+		// by using input with omitted prefix we can test how code handles pickle stack overflow:
+		// it must not panic
+		for i := 0; i < len(test.input); i++ {
+			buf := bytes.NewBufferString(test.input[i:])
+			dec := NewDecoder(buf)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("%s: panic on input[%d:]: %v", test.name, i, r)
+					}
+				}()
+				dec.Decode()
+			}()
+		}
 	}
 }
 
