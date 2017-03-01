@@ -498,6 +498,10 @@ func (d *Decoder) loadString() error {
 		return err
 	}
 
+	if len(line) < 2 {
+		return io.ErrUnexpectedEOF
+	}
+
 	var delim byte
 	switch line[0] {
 	case '\'':
@@ -508,7 +512,7 @@ func (d *Decoder) loadString() error {
 		return fmt.Errorf("invalid string delimiter: %c", line[0])
 	}
 
-	if len(line) < 2 || line[len(line)-1] != delim {
+	if line[len(line)-1] != delim {
 		return io.ErrUnexpectedEOF
 	}
 

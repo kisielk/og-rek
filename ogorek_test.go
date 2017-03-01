@@ -259,6 +259,7 @@ func TestMemoOpCode(t *testing.T) {
 func TestFuzzCrashers(t *testing.T) {
 	crashers := []string{
 		"(dS''\n(lc\n\na2a2a22aasS''\na",
+		"S\n",
 	}
 
 	for _, c := range crashers {
