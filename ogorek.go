@@ -87,7 +87,6 @@ var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
 var errNoMarker = errors.New("no marker in stack")
 var errStackUnderflow = errors.New("pickle: stack underflow")
-var errMalformedData = errors.New("pickle: malformed data")
 
 type OpcodeError struct {
 	Key byte
@@ -618,7 +617,7 @@ func (d *Decoder) loadAppend() error {
 		l := l.([]interface{})
 		d.stack[len(d.stack)-1] = append(l, v)
 	default:
-		return errMalformedData
+		return fmt.Errorf("pickle: loadAppend: expected a list, got %T", l)
 	}
 	return nil
 }
@@ -683,7 +682,7 @@ func (d *Decoder) loadAppends() error {
 		}
 		d.stack = append(d.stack[:k-1], l)
 	default:
-		return errMalformedData
+		return fmt.Errorf("pickle: loadAppends: expected a list, got %T", l)
 	}
 	return nil
 }
@@ -834,7 +833,7 @@ func (d *Decoder) loadSetItem() error {
 		m := m.(map[interface{}]interface{})
 		m[k] = v
 	default:
-		return errMalformedData
+		return fmt.Errorf("pickle: loadSetItem: expected a map, got %T", m)
 	}
 	return nil
 }
@@ -856,7 +855,7 @@ func (d *Decoder) loadSetItems() error {
 		}
 		d.stack = append(d.stack[:k-1], m)
 	default:
-		return errMalformedData
+		return fmt.Errorf("pickle: loadSetItems: expected a map, got %T", m)
 	}
 	return nil
 }
