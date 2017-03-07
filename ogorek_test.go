@@ -84,7 +84,7 @@ func TestDecode(t *testing.T) {
 
 		v, err = dec.Decode()
 		if !(v == nil && err == io.EOF) {
-			t.Errorf("decode: no EOF at end: v = %#v  err = %#v", v, err)
+			t.Errorf("%s: decode: no EOF at end: v = %#v  err = %#v", test.name, v, err)
 		}
 
 		// for truncated input io.ErrUnexpectedEOF must be returned
