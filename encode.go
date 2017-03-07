@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/big"
 	"reflect"
 )
 
@@ -195,6 +196,12 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
 	return err
 }
 
+func (e *Encoder) encodeLong(b *big.Int) error {
+	// TODO if e.protocol >= 2 use opLong1 & opLong4
+	_, err := fmt.Fprintf(e.w, "%c%dL\n", opLong, b)
+	return err
+}
+
 func (e *Encoder) encodeMap(m reflect.Value) error {
 
 	keys := m.MapKeys()
@@ -238,14 +245,32 @@ func (e *Encoder) encodeString(s string) error {
 	return e.encodeBytes([]byte(s))
 }
 
+func (e *Encoder) encodeCall(v *Call) error {
+	_, err := fmt.Fprintf(e.w, "%c%s\n%s\n", opGlobal, v.Callable.Module, v.Callable.Name)
+	if err != nil {
+		return err
+	}
+	err = e.encode(reflectValueOf(v.Args))
+	if err != nil {
+		return err
+	}
+	_, err = e.w.Write([]byte{opReduce})
+	return err
+}
+
 func (e *Encoder) encodeStruct(st reflect.Value) error {
 
 	typ := st.Type()
 
 	// first test if it's one of our internal python structs
-	if _, ok := st.Interface().(None); ok {
+	switch v := st.Interface().(type) {
+	case None:
 		_, err := e.w.Write([]byte{opNone})
 		return err
+	case Call:
+		return e.encodeCall(&v)
+	case big.Int:
+		return e.encodeLong(&v)
 	}
 
 	structTags := getStructTags(st)

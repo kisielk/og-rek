@@ -71,6 +71,7 @@ func TestDecode(t *testing.T) {
 		{"SHORTBINUNICODE opcode", "\x8c\t\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e\x94.", "日本語"},
 	}
 	for _, test := range tests {
+		// decode(input) -> expected
 		buf := bytes.NewBufferString(test.input)
 		dec := NewDecoder(buf)
 		v, err := dec.Decode()
@@ -82,9 +83,28 @@ func TestDecode(t *testing.T) {
 			t.Errorf("%s: decode:\nhave: %#v\nwant: %#v", test.name, v, test.expected)
 		}
 
+		// decode more -> EOF
 		v, err = dec.Decode()
 		if !(v == nil && err == io.EOF) {
 			t.Errorf("%s: decode: no EOF at end: v = %#v  err = %#v", test.name, v, err)
+		}
+
+		// expected (= decoded(input)) -> encode -> decode = identity
+		buf.Reset()
+		enc := NewEncoder(buf)
+		err = enc.Encode(test.expected)
+		if err != nil {
+			t.Errorf("%s: encode(expected): %v", test.name, err)
+		} else {
+			dec := NewDecoder(buf)
+			v, err := dec.Decode()
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(v, test.expected) {
+				t.Errorf("%s: expected -> decode -> encode != identity\nhave: %#v\nwant: %#v", test.name, v, test.expected)
+			}
 		}
 
 		// for truncated input io.ErrUnexpectedEOF must be returned
