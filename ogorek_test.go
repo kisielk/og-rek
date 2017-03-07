@@ -13,7 +13,10 @@ import (
 
 func bigInt(s string) *big.Int {
 	i := new(big.Int)
-	i.SetString(s, 10)
+	_, ok := i.SetString(s, 10)
+	if !ok {
+		panic("bigInt")
+	}
 	return i
 }
 
@@ -263,6 +266,10 @@ func TestDecodeError(t *testing.T) {
 		"}g1\n.",
 		"}h\x01.",
 		"}j\x01\x02\x03\x04.",
+
+		// invalid long format
+		"L123\n.",
+		"L12qL\n.",
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)

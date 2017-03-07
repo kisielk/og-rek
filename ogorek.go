@@ -403,11 +403,15 @@ func (d *Decoder) loadLong() error {
 	if err != nil {
 		return err
 	}
-	if len(line) < 1 {
+	l := len(line)
+	if l < 1 || line[l-1] != 'L' {
 		return io.ErrUnexpectedEOF
 	}
 	v := new(big.Int)
-	v.SetString(string(line[:len(line)-1]), 10)
+	_, ok := v.SetString(string(line[:l-1]), 10)
+	if !ok {
+		return fmt.Errorf("pickle: loadLong: invalid string")
+	}
 	d.push(v)
 	return nil
 }
