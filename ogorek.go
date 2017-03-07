@@ -692,7 +692,11 @@ func (d *Decoder) get() error {
 	if err != nil {
 		return err
 	}
-	d.push(d.memo[string(line)])
+	v, ok := d.memo[string(line)]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %q", line)
+	}
+	d.push(v)
 	return nil
 }
 
@@ -702,7 +706,11 @@ func (d *Decoder) binGet() error {
 		return err
 	}
 
-	d.push(d.memo[strconv.Itoa(int(b))])
+	v, ok := d.memo[strconv.Itoa(int(b))]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %d", b)
+	}
+	d.push(v)
 	return nil
 }
 
@@ -717,7 +725,11 @@ func (d *Decoder) longBinGet() error {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
-	d.push(d.memo[strconv.Itoa(int(v))])
+	vv, ok := d.memo[strconv.Itoa(int(v))]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %d", v)
+	}
+	d.push(vv)
 	return nil
 }
 
