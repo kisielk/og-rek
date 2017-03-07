@@ -79,7 +79,7 @@ func TestDecode(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(v, test.expected) {
-			t.Errorf("%s: got\n%q\n expected\n%q", test.name, v, test.expected)
+			t.Errorf("%s: decode:\nhave: %#v\nwant: %#v", test.name, v, test.expected)
 		}
 
 		v, err = dec.Decode()
