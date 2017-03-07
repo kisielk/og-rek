@@ -53,6 +53,8 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Array, reflect.Slice:
 		if rv.Type().Elem().Kind() == reflect.Uint8 {
 			return e.encodeBytes(rv.Bytes())
+		} else if _, ok := rv.Interface().(Tuple); ok {
+			return e.encodeTuple(rv.Interface().(Tuple))
 		} else {
 			return e.encodeArray(rv)
 		}
@@ -90,6 +92,36 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	}
 
 	return nil
+}
+
+func (e *Encoder) encodeTuple(t Tuple) error {
+	l := len(t)
+
+	switch l {
+	case 0:
+		_, err := e.w.Write([]byte{opEmptyTuple})
+		return err
+
+	// TODO this are protocol 2 opcodes - check e.protocol before using them
+	//case 1:
+	//case 2:
+	//case 3:
+	}
+
+	_, err := e.w.Write([]byte{opMark})
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < l; i++ {
+		err = e.encode(reflectValueOf(t[i]))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = e.w.Write([]byte{opTuple})
+	return err
 }
 
 func (e *Encoder) encodeArray(arr reflect.Value) error {
@@ -250,7 +282,7 @@ func (e *Encoder) encodeCall(v *Call) error {
 	if err != nil {
 		return err
 	}
-	err = e.encode(reflectValueOf(v.Args))
+	err = e.encodeTuple(v.Args)
 	if err != nil {
 		return err
 	}

@@ -104,6 +104,9 @@ type mark struct{}
 // None is a representation of Python's None.
 type None struct{}
 
+// Tuple is a representation of Python's tuple.
+type Tuple []interface{}
+
 // Decoder is a decoder for pickle streams.
 type Decoder struct {
 	r     *bufio.Reader
@@ -227,7 +230,7 @@ loop:
 		case opTuple3:
 			err = d.loadTuple3()
 		case opEmptyTuple:
-			d.push([]interface{}{})
+			d.push(Tuple{})
 		case opSetitems:
 			err = d.loadSetItems()
 		case opBinfloat:
@@ -469,7 +472,7 @@ func (d *Decoder) loadBinPersid() error {
 
 type Call struct {
 	Callable Class
-	Args     []interface{}
+	Args     Tuple
 }
 
 func (d *Decoder) reduce() error {
@@ -478,7 +481,7 @@ func (d *Decoder) reduce() error {
 	}
 	xargs := d.xpop()
 	xclass := d.xpop()
-	args, ok := xargs.([]interface{})
+	args, ok := xargs.(Tuple)
 	if !ok {
 		return fmt.Errorf("pickle: reduce: invalid args: %T", xargs)
 	}
@@ -767,7 +770,7 @@ func (d *Decoder) loadTuple() error {
 		return err
 	}
 
-	v := append([]interface{}{}, d.stack[k+1:]...)
+	v := append(Tuple{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
@@ -777,7 +780,7 @@ func (d *Decoder) loadTuple1() error {
 		return errStackUnderflow
 	}
 	k := len(d.stack) - 1
-	v := append([]interface{}{}, d.stack[k:]...)
+	v := append(Tuple{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
@@ -787,7 +790,7 @@ func (d *Decoder) loadTuple2() error {
 		return errStackUnderflow
 	}
 	k := len(d.stack) - 2
-	v := append([]interface{}{}, d.stack[k:]...)
+	v := append(Tuple{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
@@ -797,7 +800,7 @@ func (d *Decoder) loadTuple3() error {
 		return errStackUnderflow
 	}
 	k := len(d.stack) - 3
-	v := append([]interface{}{}, d.stack[k:]...)
+	v := append(Tuple{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
