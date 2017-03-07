@@ -12,6 +12,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"reflect"
 	"strconv"
 )
 
@@ -652,7 +653,11 @@ func (d *Decoder) loadDict() error {
 	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
 	for i := 0; i < len(items); i += 2 {
-		m[items[i]] = items[i+1]
+		key := items[i]
+		if !reflect.TypeOf(key).Comparable() {
+			return fmt.Errorf("pickle: loadDict: invalid key type %T", key)
+		}
+		m[key] = items[i+1]
 	}
 	d.stack = append(d.stack[:k], m)
 	return nil
@@ -840,9 +845,11 @@ func (d *Decoder) loadSetItem() error {
 	v := d.xpop()
 	k := d.xpop()
 	m := d.stack[len(d.stack)-1]
-	switch m.(type) {
+	switch m := m.(type) {
 	case map[interface{}]interface{}:
-		m := m.(map[interface{}]interface{})
+		if !reflect.TypeOf(k).Comparable() {
+			return fmt.Errorf("pickle: loadSetItem: invalid key type %T", k)
+		}
 		m[k] = v
 	default:
 		return fmt.Errorf("pickle: loadSetItem: expected a map, got %T", m)
@@ -863,6 +870,10 @@ func (d *Decoder) loadSetItems() error {
 	switch m := l.(type) {
 	case map[interface{}]interface{}:
 		for i := k + 1; i < len(d.stack); i += 2 {
+			key := d.stack[i]
+			if !reflect.TypeOf(key).Comparable() {
+				return fmt.Errorf("pickle: loadSetItems: invalid key type %T", key)
+			}
 			m[d.stack[i]] = d.stack[i+1]
 		}
 		d.stack = append(d.stack[:k-1], m)

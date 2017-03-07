@@ -278,6 +278,13 @@ func TestFuzzCrashers(t *testing.T) {
 	crashers := []string{
 		"(dS''\n(lc\n\na2a2a22aasS''\na",
 		"S\n",
+		"((dd",
+		"}}}s",
+		"(((ld",
+		"(dS''\n(lp4\nsg4\n(s",
+		"}((tu",
+		"}((du",
+		"(c\n\nc\n\n\x85Rd",
 	}
 
 	for _, c := range crashers {
