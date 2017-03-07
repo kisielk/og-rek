@@ -285,6 +285,8 @@ func TestFuzzCrashers(t *testing.T) {
 		"}((tu",
 		"}((du",
 		"(c\n\nc\n\n\x85Rd",
+		"}(U\x040000u",
+		"(\x88d",
 	}
 
 	for _, c := range crashers {
