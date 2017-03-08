@@ -12,6 +12,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"reflect"
 	"strconv"
 )
 
@@ -651,8 +652,15 @@ func (d *Decoder) loadDict() error {
 
 	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
+	if len(items) % 2 != 0 {
+		return fmt.Errorf("pickle: loadDict: odd # of elements")
+	}
 	for i := 0; i < len(items); i += 2 {
-		m[items[i]] = items[i+1]
+		key := items[i]
+		if !reflect.TypeOf(key).Comparable() {
+			return fmt.Errorf("pickle: loadDict: invalid key type %T", key)
+		}
+		m[key] = items[i+1]
 	}
 	d.stack = append(d.stack[:k], m)
 	return nil
@@ -692,7 +700,11 @@ func (d *Decoder) get() error {
 	if err != nil {
 		return err
 	}
-	d.push(d.memo[string(line)])
+	v, ok := d.memo[string(line)]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %q", line)
+	}
+	d.push(v)
 	return nil
 }
 
@@ -702,7 +714,11 @@ func (d *Decoder) binGet() error {
 		return err
 	}
 
-	d.push(d.memo[strconv.Itoa(int(b))])
+	v, ok := d.memo[strconv.Itoa(int(b))]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %d", b)
+	}
+	d.push(v)
 	return nil
 }
 
@@ -717,7 +733,11 @@ func (d *Decoder) longBinGet() error {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
-	d.push(d.memo[strconv.Itoa(int(v))])
+	vv, ok := d.memo[strconv.Itoa(int(v))]
+	if !ok {
+		return fmt.Errorf("pickle: memo: key error %d", v)
+	}
+	d.push(vv)
 	return nil
 }
 
@@ -828,9 +848,11 @@ func (d *Decoder) loadSetItem() error {
 	v := d.xpop()
 	k := d.xpop()
 	m := d.stack[len(d.stack)-1]
-	switch m.(type) {
+	switch m := m.(type) {
 	case map[interface{}]interface{}:
-		m := m.(map[interface{}]interface{})
+		if !reflect.TypeOf(k).Comparable() {
+			return fmt.Errorf("pickle: loadSetItem: invalid key type %T", k)
+		}
 		m[k] = v
 	default:
 		return fmt.Errorf("pickle: loadSetItem: expected a map, got %T", m)
@@ -850,7 +872,14 @@ func (d *Decoder) loadSetItems() error {
 	l := d.stack[k-1]
 	switch m := l.(type) {
 	case map[interface{}]interface{}:
+		if (len(d.stack) - (k + 1)) % 2 != 0 {
+			return fmt.Errorf("pickle: loadSetItems: odd # of elements")
+		}
 		for i := k + 1; i < len(d.stack); i += 2 {
+			key := d.stack[i]
+			if !reflect.TypeOf(key).Comparable() {
+				return fmt.Errorf("pickle: loadSetItems: invalid key type %T", key)
+			}
 			m[d.stack[i]] = d.stack[i+1]
 		}
 		d.stack = append(d.stack[:k-1], m)

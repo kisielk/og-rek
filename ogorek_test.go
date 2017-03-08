@@ -256,10 +256,37 @@ func TestMemoOpCode(t *testing.T) {
 
 }
 
+// verify that decode of erroneous input produces error
+func TestDecodeError(t *testing.T) {
+	testv := []string{
+		// all kinds of opcodes to read memo but key is not there
+		"}g1\n.",
+		"}h\x01.",
+		"}j\x01\x02\x03\x04.",
+	}
+	for _, tt := range testv {
+		buf := bytes.NewBufferString(tt)
+		dec := NewDecoder(buf)
+		v, err := dec.Decode()
+		if !(v == nil && err != nil) {
+			t.Errorf("%q: no decode error  ; got %#v, %#v", tt, v, err)
+		}
+	}
+}
+
 func TestFuzzCrashers(t *testing.T) {
 	crashers := []string{
 		"(dS''\n(lc\n\na2a2a22aasS''\na",
 		"S\n",
+		"((dd",
+		"}}}s",
+		"(((ld",
+		"(dS''\n(lp4\nsg4\n(s",
+		"}((tu",
+		"}((du",
+		"(c\n\nc\n\n\x85Rd",
+		"}(U\x040000u",
+		"(\x88d",
 	}
 
 	for _, c := range crashers {
