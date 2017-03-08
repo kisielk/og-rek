@@ -13,7 +13,10 @@ import (
 
 func bigInt(s string) *big.Int {
 	i := new(big.Int)
-	i.SetString(s, 10)
+	_, ok := i.SetString(s, 10)
+	if !ok {
+		panic("bigInt")
+	}
 	return i
 }
 
@@ -44,13 +47,13 @@ func TestDecode(t *testing.T) {
 		{"float", "F1.23\n.", float64(1.23)},
 		{"long", "L12321231232131231231L\n.", bigInt("12321231232131231231")},
 		{"None", "N.", None{}},
-		{"empty tuple", "(t.", []interface{}{}},
-		{"tuple of two ints", "(I1\nI2\ntp0\n.", []interface{}{int64(1), int64(2)}},
+		{"empty tuple", "(t.", Tuple{}},
+		{"tuple of two ints", "(I1\nI2\ntp0\n.", Tuple{int64(1), int64(2)}},
 		{"nested tuples", "((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n.",
-			[]interface{}{[]interface{}{int64(1), int64(2)}, []interface{}{int64(3), int64(4)}}},
-		{"tuple with top 1 items from stack", "I0\n\x85.", []interface{}{int64(0)}},
-		{"tuple with top 2 items from stack", "I0\nI1\n\x86.", []interface{}{int64(0), int64(1)}},
-		{"tuple with top 3 items from stack", "I0\nI1\nI2\n\x87.", []interface{}{int64(0), int64(1), int64(2)}},
+			Tuple{Tuple{int64(1), int64(2)}, Tuple{int64(3), int64(4)}}},
+		{"tuple with top 1 items from stack", "I0\n\x85.", Tuple{int64(0)}},
+		{"tuple with top 2 items from stack", "I0\nI1\n\x86.", Tuple{int64(0), int64(1)}},
+		{"tuple with top 3 items from stack", "I0\nI1\nI2\n\x87.", Tuple{int64(0), int64(1), int64(2)}},
 		{"empty list", "(lp0\n.", []interface{}{}},
 		{"list of numbers", "(lp0\nI1\naI2\naI3\naI4\na.", []interface{}{int64(1), int64(2), int64(3), int64(4)}},
 		{"string", "S'abc'\np0\n.", string("abc")},
@@ -68,6 +71,7 @@ func TestDecode(t *testing.T) {
 		{"SHORTBINUNICODE opcode", "\x8c\t\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e\x94.", "日本語"},
 	}
 	for _, test := range tests {
+		// decode(input) -> expected
 		buf := bytes.NewBufferString(test.input)
 		dec := NewDecoder(buf)
 		v, err := dec.Decode()
@@ -76,12 +80,31 @@ func TestDecode(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(v, test.expected) {
-			t.Errorf("%s: got\n%q\n expected\n%q", test.name, v, test.expected)
+			t.Errorf("%s: decode:\nhave: %#v\nwant: %#v", test.name, v, test.expected)
 		}
 
+		// decode more -> EOF
 		v, err = dec.Decode()
 		if !(v == nil && err == io.EOF) {
-			t.Errorf("decode: no EOF at end: v = %#v  err = %#v", v, err)
+			t.Errorf("%s: decode: no EOF at end: v = %#v  err = %#v", test.name, v, err)
+		}
+
+		// expected (= decoded(input)) -> encode -> decode = identity
+		buf.Reset()
+		enc := NewEncoder(buf)
+		err = enc.Encode(test.expected)
+		if err != nil {
+			t.Errorf("%s: encode(expected): %v", test.name, err)
+		} else {
+			dec := NewDecoder(buf)
+			v, err := dec.Decode()
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(v, test.expected) {
+				t.Errorf("%s: expected -> decode -> encode != identity\nhave: %#v\nwant: %#v", test.name, v, test.expected)
+			}
 		}
 
 		// for truncated input io.ErrUnexpectedEOF must be returned
@@ -263,6 +286,10 @@ func TestDecodeError(t *testing.T) {
 		"}g1\n.",
 		"}h\x01.",
 		"}j\x01\x02\x03\x04.",
+
+		// invalid long format
+		"L123\n.",
+		"L12qL\n.",
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)
