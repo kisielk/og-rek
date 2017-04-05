@@ -536,6 +536,7 @@ func (d *Decoder) loadBinString() error {
 	v := binary.LittleEndian.Uint32(b[:])
 
 	d.buf.Reset()
+	d.buf.Grow(int(v))
 	_, err = io.CopyN(&d.buf, d.r, int64(v))
 	if err != nil {
 		return err
@@ -551,6 +552,7 @@ func (d *Decoder) loadShortBinString() error {
 	}
 
 	d.buf.Reset()
+	d.buf.Grow(int(b))
 	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
@@ -568,6 +570,7 @@ func (d *Decoder) loadUnicode() error {
 	sline := string(line)
 
 	d.buf.Reset()
+	d.buf.Grow(len(line)) // approximation
 
 	for len(sline) > 0 {
 		var r rune
@@ -925,6 +928,7 @@ func (d *Decoder) loadShortBinUnicode() error {
 	}
 
 	d.buf.Reset()
+	d.buf.Grow(int(b))
 	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
