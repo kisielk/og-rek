@@ -119,13 +119,13 @@ type Decoder struct {
 }
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
-func NewDecoder(r io.Reader) Decoder {
+func NewDecoder(r io.Reader) *Decoder {
 	reader := bufio.NewReader(r)
-	return Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
+	return &Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
 }
 
 // Decode decodes the pickle stream and returns the result or an error.
-func (d Decoder) Decode() (interface{}, error) {
+func (d *Decoder) Decode() (interface{}, error) {
 
 	insn := 0
 loop:
