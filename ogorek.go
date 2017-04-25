@@ -80,6 +80,7 @@ const (
 
 	// Protocol 4
 	opShortBinUnicode = '\x8c' // push short string; UTF-8 length < 256 bytes
+	opStackGlobal     = '\x93' // same as OpGlobal but using names on the stacks
 	opMemoize         = '\x94' // store top of the stack in memo
 	opFrame           = '\x95' // indicate the beginning of a new frame
 )
@@ -242,6 +243,8 @@ loop:
 			err = d.loadFrame()
 		case opShortBinUnicode:
 			err = d.loadShortBinUnicode()
+		case opStackGlobal:
+			err = d.stackGlobal()
 		case opMemoize:
 			err = d.loadMemoize()
 		case opProto:
@@ -941,6 +944,26 @@ func (d *Decoder) loadShortBinUnicode() error {
 		return err
 	}
 	d.push(d.buf.String())
+	return nil
+}
+
+func (d *Decoder) stackGlobal() error {
+	if len(d.stack) < 2 {
+		return errStackUnderflow
+	}
+	xname := d.xpop()
+	xmodule := d.xpop()
+
+	name, ok := xname.(string)
+	if !ok {
+		return fmt.Errorf("pickle: stackGlobal: invalid name: %T", xname)
+	}
+	module, ok := xmodule.(string)
+	if !ok {
+		return fmt.Errorf("pickle: stackGlobal: invalid module: %T", xmodule)
+	}
+
+	d.stack = append(d.stack, Class{Module: module, Name: name})
 	return nil
 }
 
