@@ -948,6 +948,9 @@ func (d *Decoder) loadShortBinUnicode() error {
 }
 
 func (d *Decoder) stackGlobal() error {
+	if len(d.stack) < 2 {
+		return errStackUnderflow
+	}
 	name := d.xpop()
 	module := d.xpop()
 	d.stack = append(d.stack, Class{Module: module.(string), Name: name.(string)})
