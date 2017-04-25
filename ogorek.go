@@ -951,9 +951,19 @@ func (d *Decoder) stackGlobal() error {
 	if len(d.stack) < 2 {
 		return errStackUnderflow
 	}
-	name := d.xpop()
-	module := d.xpop()
-	d.stack = append(d.stack, Class{Module: module.(string), Name: name.(string)})
+	xname := d.xpop()
+	xmodule := d.xpop()
+
+	name, ok := xname.(string)
+	if !ok {
+		return fmt.Errorf("pickle: stackGlobal: invalid name: %T", xname)
+	}
+	module, ok := xmodule.(string)
+	if !ok {
+		return fmt.Errorf("pickle: stackGlobal: invalid module: %T", xmodule)
+	}
+
+	d.stack = append(d.stack, Class{Module: module, Name: name})
 	return nil
 }
 
