@@ -469,14 +469,40 @@ func (d *Decoder) loadNone() error {
 	return nil
 }
 
+
+// Ref represents Python's persistent reference.
+//
+// Such references are used when one pickle somehow references another pickle
+// in e.g. a database.
+//
+// See https://docs.python.org/3/library/pickle.html#pickle-persistent for details.
+type Ref struct {
+	// persistent ID of referenced object.
+	//
+	// used to be string for protocol 0, but "upgraded" to be arbitrary
+	// object for later protocols.
+	Pid interface{}
+}
+
 // Push a persistent object id
 func (d *Decoder) loadPersid() error {
-	return errNotImplemented
+	pid, err := d.readLine()
+	if err != nil {
+		return err
+	}
+
+	d.push(Ref{Pid: string(pid)})
+	return nil
 }
 
 // Push a persistent object id from items on the stack
 func (d *Decoder) loadBinPersid() error {
-	return errNotImplemented
+	pid, err := d.pop()
+	if err != nil {
+		return err
+	}
+	d.push(Ref{Pid: pid})
+	return nil
 }
 
 // Call represents Python's call.
