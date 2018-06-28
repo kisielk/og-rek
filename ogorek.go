@@ -90,6 +90,7 @@ var ErrInvalidPickleVersion = errors.New("invalid pickle version")
 var errNoMarker = errors.New("no marker in stack")
 var errStackUnderflow = errors.New("pickle: stack underflow")
 
+// OpcodeError is the error that Decode returns when it sees unknown pickle opcode.
 type OpcodeError struct {
 	Key byte
 	Pos int
@@ -478,6 +479,7 @@ func (d *Decoder) loadBinPersid() error {
 	return errNotImplemented
 }
 
+// Call represents Python's call.
 type Call struct {
 	Callable Class
 	Args     Tuple
@@ -645,6 +647,7 @@ func (d *Decoder) build() error {
 	return errNotImplemented
 }
 
+// Class represents a Python class.
 type Class struct {
 	Module, Name string
 }
