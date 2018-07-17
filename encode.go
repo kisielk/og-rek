@@ -20,12 +20,31 @@ func (te *TypeError) Error() string {
 
 // An Encoder encodes Go data structures into pickle byte stream
 type Encoder struct {
-	w io.Writer
+	w      io.Writer
+	config *EncoderConfig
+}
+
+// EncoderConfig allows to tune Encoder.
+type EncoderConfig struct {
+	// PersistentRef, if !nil, will be used by encoder to encode objects as persistent references.
+	//
+	// Whenever the encoders sees pointer to a Go struct object, it will call
+	// PersistentRef to find out how to encode that object. If PersistentRef
+	// returns nil, the object is encoded regularly. If !nil - the object
+	// will be encoded as an object reference.
+	//
+	// See Ref documentation for more details.
+	PersistentRef func(obj interface{}) *Ref
 }
 
 // NewEncoder returns a new Encoder struct with default values
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{w: w}
+	return NewEncoderWithConfig(w, &EncoderConfig{})
+}
+
+// NewEncoderWithConfig is similar to NewEncoder, but allows specifying the encoder configuration.
+func NewEncoderWithConfig(w io.Writer, config *EncoderConfig) *Encoder {
+	return &Encoder{w: w, config: config}
 }
 
 // Encode writes the pickle encoding of v to w, the encoder's writer
@@ -77,6 +96,14 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Ptr:
 
 		if rv.Elem().Kind() == reflect.Struct {
+			// check if we have to encode this object as persistent reference.
+			if getref := e.config.PersistentRef; getref != nil {
+				ref := getref(rv.Interface())
+				if ref != nil {
+					return e.encodeRef(ref)
+				}
+			}
+
 			switch rv.Elem().Interface().(type) {
 			case None:
 				return e.encodeStruct(rv.Elem())

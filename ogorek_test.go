@@ -3,6 +3,7 @@ package ogórek
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
 	"math/big"
 	"reflect"
@@ -302,6 +303,111 @@ func TestDecodeError(t *testing.T) {
 		v, err := dec.Decode()
 		if !(v == nil && err != nil) {
 			t.Errorf("%q: no decode error  ; got %#v, %#v", tt, v, err)
+		}
+	}
+}
+
+// verify how decoder/encoder handle application-level settings wrt Refs.
+func TestPersistentRefs(t *testing.T) {
+	// ZBTree mimics BTree from ZODB.
+	type ZBTree struct {
+		oid string
+	}
+
+	errInvalidRef := errors.New("invalid reference")
+
+	// Ref -> ? object
+	loadref := func(ref Ref) (interface{}, error) {
+		// pretend we handle "zodb.BTree" -> ZBTree.
+		t, ok := ref.Pid.(Tuple)
+		if !ok || len(t) != 2 {
+			return nil, errInvalidRef
+		}
+
+		class, ok1 := t[0].(Class)
+		oid, ok2   := t[1].(string)
+		if !(ok1 && ok2) {
+			return nil, errInvalidRef
+		}
+
+		switch class {
+		case Class{Module: "zodb", Name: "BTree"}:
+			return &ZBTree{oid}, nil
+
+		default:
+			// leave it as is
+			return nil, nil
+		}
+	}
+
+	// object -> ? Ref
+	getref := func(obj interface{}) *Ref {
+		// pretend we handle ZBTree.
+		switch obj := obj.(type) {
+		default:
+			return nil
+
+		case *ZBTree:
+			return &Ref{Pid: Tuple{Class{Module: "zodb", Name: "BTree"}, obj.oid}}
+		}
+	}
+
+	dconf := &DecoderConfig{PersistentLoad: loadref}
+	econf := &EncoderConfig{PersistentRef: getref}
+
+	testv := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"Pabc\n.", errInvalidRef},
+		{"\x80\x01S'abc'\nQ.", errInvalidRef},
+		{"\x80\x01S'abc'\nS'123'\n\x86Q.", errInvalidRef},
+		{"\x80\x01cfoo\nbar\nS'123'\n\x86Q.", Ref{Tuple{Class{Module: "foo", Name: "bar"}, "123"}}},
+		{"\x80\x01czodb\nBTree\nS'123'\n\x86Q.", &ZBTree{oid: "123"}},
+	}
+
+	for _, tt := range testv {
+		// decode(input) -> expected
+		buf := bytes.NewBufferString(tt.input)
+		dec := NewDecoderWithConfig(buf, dconf)
+		v, err := dec.Decode()
+
+		expected := tt.expected
+		errExpect := ""
+		if e, iserr := expected.(error); iserr {
+			expected = nil
+			errExpect = "pickle: handleRef: " + e.Error()
+		}
+
+		if !(reflect.DeepEqual(v, expected) &&
+			((err == nil && errExpect == "") || err.Error() == errExpect)) {
+			t.Errorf("%q: decode -> %#v, %q; want %#v, %q",
+				tt.input, v, err, expected, errExpect)
+		}
+
+		if err != nil {
+			continue
+		}
+
+		// expected -> encode -> decode = identity
+		buf.Reset()
+		enc := NewEncoderWithConfig(buf, econf)
+		err = enc.Encode(tt.expected)
+		if err != nil {
+			t.Errorf("%q: encode(expected) -> %q", tt.input, err)
+			continue
+		}
+
+		dec = NewDecoderWithConfig(buf, dconf)
+		v, err = dec.Decode()
+		if err != nil {
+			t.Errorf("%q: expected -> encode -> decode: %q", tt.input, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(v, tt.expected) {
+			t.Errorf("%q: expected -> encode -> decode != identity\nhave: %#v\nwant: %#v",
+				tt.input, v, tt.expected)
 		}
 	}
 }

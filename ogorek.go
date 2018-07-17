@@ -111,9 +111,10 @@ type Tuple []interface{}
 
 // Decoder is a decoder for pickle streams.
 type Decoder struct {
-	r     *bufio.Reader
-	stack []interface{}
-	memo  map[string]interface{}
+	r      *bufio.Reader
+	config *DecoderConfig
+	stack  []interface{}
+	memo   map[string]interface{}
 
 	// a reusable buffer that can be used by the various decoding functions
 	// functions using this should call buf.Reset to clear the old contents
@@ -123,10 +124,37 @@ type Decoder struct {
 	line  []byte
 }
 
+// DecoderConfig allows to tune Decoder.
+type DecoderConfig struct {
+	// PersistentLoad, if !nil, will be used by decoder to handle persistent references.
+	//
+	// Whenever the decoder finds an object reference in the pickle stream
+	// it will call PersistentLoad. If PersistentLoad returns !nil object
+	// without error, the decoder will use that object instead of Ref in
+	// the resulted built Go object.
+	//
+	// An example use-case for PersistentLoad is to transform persistent
+	// references in a ZODB database of form (type, oid) tuple, into
+	// equivalent-to-type Go ghost object, e.g. equivalent to zodb.BTree.
+	//
+	// See Ref documentation for more details.
+	PersistentLoad func(ref Ref) (interface{}, error)
+}
+
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
 func NewDecoder(r io.Reader) *Decoder {
+	return NewDecoderWithConfig(r, &DecoderConfig{})
+}
+
+// NewDecoderWithConfig is similar to NewDecoder, but allows specifying decoder configuration.
+func NewDecoderWithConfig(r io.Reader, config *DecoderConfig) *Decoder {
 	reader := bufio.NewReader(r)
-	return &Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
+	return &Decoder{
+		r:      reader,
+		config: config,
+		stack:  make([]interface{}, 0),
+		memo:   make(map[string]interface{}),
+	}
 }
 
 // Decode decodes the pickle stream and returns the result or an error.
@@ -470,12 +498,16 @@ func (d *Decoder) loadNone() error {
 }
 
 
-// Ref represents Python's persistent reference.
+// Ref is the default representation for a Python persistent reference.
 //
 // Such references are used when one pickle somehow references another pickle
 // in e.g. a database.
 //
 // See https://docs.python.org/3/library/pickle.html#pickle-persistent for details.
+//
+// See DecoderConfig.PersistentLoad and EncoderConfig.PersistentRef for ways to
+// tune Decoder and Encoder to handle persistent references with user-specified
+// application logic.
 type Ref struct {
 	// persistent ID of referenced object.
 	//
@@ -491,8 +523,7 @@ func (d *Decoder) loadPersid() error {
 		return err
 	}
 
-	d.push(Ref{Pid: string(pid)})
-	return nil
+	return d.handleRef(Ref{Pid: string(pid)})
 }
 
 // Push a persistent object id from items on the stack
@@ -501,7 +532,24 @@ func (d *Decoder) loadBinPersid() error {
 	if err != nil {
 		return err
 	}
-	d.push(Ref{Pid: pid})
+	return d.handleRef(Ref{Pid: pid})
+}
+
+// handleRef is common place to handle Refs.
+func (d *Decoder) handleRef(ref Ref) error {
+	if load := d.config.PersistentLoad; load != nil {
+		obj, err := load(ref)
+		if err != nil {
+			return fmt.Errorf("pickle: handleRef: %s", err)
+		}
+		if obj == nil {
+			// PersistentLoad asked to leave the reference as is.
+			obj = ref
+		}
+		d.push(obj)
+	} else {
+		d.push(ref)
+	}
 	return nil
 }
 
