@@ -277,8 +277,14 @@ loop:
 		case opMemoize:
 			err = d.loadMemoize()
 		case opProto:
-			v, err := d.r.ReadByte()
-			if err == nil && v != 2 {
+			var v byte
+			v, err = d.r.ReadByte()
+			if err == nil && !(0 <= v && v <= 4) {
+				// We support protocol opcodes for up to protocol 4.
+				//
+				// The PROTO opcode documentation says protocol version must be in [2, 256).
+				// However CPython also loads PROTO with version 0 and 1 without error.
+				// So we allow all supported versions as PROTO argument.
 				err = ErrInvalidPickleVersion
 			}
 
