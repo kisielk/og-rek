@@ -296,6 +296,9 @@ func TestDecodeError(t *testing.T) {
 		// invalid long format
 		"L123\n.",
 		"L12qL\n.",
+
+		// invalid protocol version
+		"\x80\xffI1\n.",
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)
