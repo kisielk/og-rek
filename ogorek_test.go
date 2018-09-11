@@ -173,96 +173,35 @@ func TestDecodeMultiple(t *testing.T) {
 	}
 }
 
-func TestZeroLengthData(t *testing.T) {
-	data := ""
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
+func TestDecodeLong(t *testing.T) {
+	var testv = []struct {
+		data  string
+		value int64 // converted to big.Int by test driver
+	}{
+		{"", 0},
+		{"\xff\x00", 255},
+		{"\xff\x7f", 32767},
+		{"\x00\xff", -256},
+		{"\x00\x80", -32768},
+		{"\x80", -128},
+		{"\x7f", 127},
 	}
-	if output.BitLen() > 0 {
-		t.Fail()
+
+	for _, tt := range testv {
+		value, err := decodeLong(tt.data)
+		if err != nil {
+			t.Errorf("data %q: %s", tt.data, err)
+			continue
+		}
+
+		valueOk := big.NewInt(tt.value)
+		if valueOk.Cmp(value) != 0 {
+			t.Errorf("data %q: ->long: got %s  ; want %s", tt.data, value, valueOk)
+		}
 	}
 }
 
-func TestValue1(t *testing.T) {
-	data := "\xff\x00"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(255)
-	if target.Cmp(output) != 0 {
-		t.Fail()
-	}
-}
-
-func TestValue2(t *testing.T) {
-	data := "\xff\x7f"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(32767)
-	if target.Cmp(output) != 0 {
-		t.Fail()
-	}
-}
-
-func TestValue3(t *testing.T) {
-	data := "\x00\xff"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(256)
-	target.Neg(target)
-	if target.Cmp(output) != 0 {
-		t.Logf("\nGot %v\nExpecting %v\n", output, target)
-		t.Fail()
-	}
-}
-
-func TestValue4(t *testing.T) {
-	data := "\x00\x80"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(32768)
-	target.Neg(target)
-	if target.Cmp(output) != 0 {
-		t.Logf("\nGot %v\nExpecting %v\n", output, target)
-		t.Fail()
-	}
-}
-
-func TestValue5(t *testing.T) {
-	data := "\x80"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(128)
-	target.Neg(target)
-	if target.Cmp(output) != 0 {
-		t.Logf("\nGot %v\nExpecting %v\n", output, target)
-		t.Fail()
-	}
-}
-
-func TestValue6(t *testing.T) {
-	data := "\x7f"
-	output, err := decodeLong(data)
-	if err != nil {
-		t.Errorf("Error from decodeLong - %v\n", err)
-	}
-	target := big.NewInt(127)
-	if target.Cmp(output) != 0 {
-		t.Fail()
-	}
-}
-
-func BenchmarkSpeed(b *testing.B) {
+func BenchmarkDecodeLong(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		data := "\x00\x80"
 		_, err := decodeLong(data)
