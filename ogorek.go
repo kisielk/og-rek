@@ -672,7 +672,7 @@ func (d *Decoder) loadUnicode() error {
 		if len(sline) == 0 {
 			break
 		}
-		r, _, sline, err = strconv.UnquoteChar(sline, '\'')
+		r, _, sline, err = unquoteChar(sline, '\'')
 		if err != nil {
 			return err
 		}
@@ -1056,6 +1056,37 @@ func (d *Decoder) loadMemoize() error {
 	}
 	d.memo[strconv.Itoa(len(d.memo))] = d.stack[len(d.stack)-1]
 	return nil
+}
+
+// unquoteChar is like strconv.UnquoteChar, but returns io.ErrUnexpectedEOF
+// instead of strconv.ErrSyntax, when input is prematurely terminted.
+//
+// XXX remove if ever something like https://golang.org/cl/37052 is accepted.
+func unquoteChar(s string, quote byte) (value rune, multibyte bool, tail string, err error) {
+	// strconv.UnquoteChar("") panics before Go1.11
+	if s == "" {
+		return 0, false, "", io.ErrUnexpectedEOF
+	}
+
+	value, multibyte, tail, err = strconv.UnquoteChar(s, quote)
+	if err == nil {
+		return
+	}
+
+	// now we have to find out whether it was due to input cut.
+	if len(s) > 10 { // \U12345678
+		return
+	}
+
+	// + "0"*9 should make s valid if it was cut, e.g. "\U012" becomes "\U012000000000".
+	// On the other hand, if s was invalid, e.g. "\Uz"
+	// it will remain invaild even with the suffix.
+	_, _, _, err2 := strconv.UnquoteChar(s + "000000000", quote)
+	if err2 == nil {
+		err = io.ErrUnexpectedEOF
+	}
+
+	return
 }
 
 // decodeLong takes a byte array of 2's compliment little-endian binary words and converts them
