@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -119,12 +118,6 @@ func TestDecode(t *testing.T) {
 			dec := NewDecoder(buf)
 			//println(test.name, l)
 			v, err := dec.Decode()
-			// strconv.UnquoteChar used in loadUnicode always returns
-			// SyntaxError, at least unless the following CL is accepted:
-			// https://go-review.googlesource.com/37052
-			if err == strconv.ErrSyntax && strings.HasPrefix(test.name, "unicode") {
-				err = io.ErrUnexpectedEOF
-			}
 			if !(v == nil && err == io.ErrUnexpectedEOF) {
 				t.Errorf("%s: no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", test.name, l, v, err)
 			}
@@ -423,6 +416,51 @@ func BenchmarkEncode(b *testing.B) {
 		err := enc.Encode(input)
 		if err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+
+var misquotedChars = []struct{
+	in  string
+	err error
+}{
+	{`\000`, nil}, // nil mean unquoteChar should be ok -> test for io.ErrUnexpectedEOF
+	{`\x00`, nil}, // on truncated input
+	{`\u0000`, nil},
+	{`\U00000000`, nil},
+
+	{`"`, strconv.ErrSyntax},
+	{`\'`, strconv.ErrSyntax},
+	{`\q`, strconv.ErrSyntax},
+	{`\z`, strconv.ErrSyntax},
+	{`\008`, strconv.ErrSyntax},
+	{`\400`, strconv.ErrSyntax},
+	{`\x0z`, strconv.ErrSyntax},
+	{`\u000z`, strconv.ErrSyntax},
+	{`\U0000000z`, strconv.ErrSyntax},
+	{`\U12345678`, strconv.ErrSyntax},
+}
+
+
+// verify that our unquoteChar properly returns ErrUnexpectedEOF instead of ErrSyntax.
+func TestUnquoteCharEOF(t *testing.T) {
+	for _, tt := range misquotedChars {
+		_, _, _, err := unquoteChar(tt.in, '"')
+		if err != tt.err {
+			t.Errorf("unquoteChar(%#q) -> err = %v want %v", tt.in, err, tt.err)
+		}
+
+		if tt.err != nil {
+			continue
+		}
+
+		// truncated valid input should result in unexpected EOF
+		for l := len(tt.in) - 1; l >= 0; l-- {
+			_, _, _, err2 := unquoteChar(tt.in[:l], '"')
+			if err2 != io.ErrUnexpectedEOF {
+				t.Errorf("unquoteChar(%#q) -> err = %v want %v", tt.in[:l], err2, io.ErrUnexpectedEOF)
+			}
 		}
 	}
 }
