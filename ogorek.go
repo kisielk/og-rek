@@ -18,50 +18,55 @@ import (
 
 // Opcodes
 const (
+	// Protocol 0
+
 	opMark           byte = '(' // push special markobject on stack
 	opStop           byte = '.' // every pickle ends with STOP
 	opPop            byte = '0' // discard topmost stack item
-	opPopMark        byte = '1' // discard stack top through topmost markobject
 	opDup            byte = '2' // duplicate top stack item
 	opFloat          byte = 'F' // push float object; decimal string argument
 	opInt            byte = 'I' // push integer or bool; decimal string argument
-	opBinint         byte = 'J' // push four-byte signed int
-	opBinint1        byte = 'K' // push 1-byte unsigned int
 	opLong           byte = 'L' // push long; decimal string argument
-	opBinint2        byte = 'M' // push 2-byte unsigned int
 	opNone           byte = 'N' // push None
 	opPersid         byte = 'P' // push persistent object; id is taken from string arg
-	opBinpersid      byte = 'Q' //  "       "         "  ;  "  "   "     "  stack
 	opReduce         byte = 'R' // apply callable to argtuple, both on stack
 	opString         byte = 'S' // push string; NL-terminated string argument
-	opBinstring      byte = 'T' // push string; counted binary string argument
-	opShortBinstring byte = 'U' //  "     "   ;    "      "       "      " < 256 bytes
 	opUnicode        byte = 'V' // push Unicode string; raw-unicode-escaped"d argument
-	opBinunicode     byte = 'X' //   "     "       "  ; counted UTF-8 string argument
 	opAppend         byte = 'a' // append stack top to list below it
 	opBuild          byte = 'b' // call __setstate__ or __dict__.update()
 	opGlobal         byte = 'c' // push self.find_class(modname, name); 2 string args
 	opDict           byte = 'd' // build a dict from stack items
-	opEmptyDict      byte = '}' // push empty dict
-	opAppends        byte = 'e' // extend list on stack by topmost stack slice
 	opGet            byte = 'g' // push item from memo on stack; index is string arg
-	opBinget         byte = 'h' //   "    "    "    "   "   "  ;   "    " 1-byte arg
 	opInst           byte = 'i' // build & push class instance
-	opLongBinget     byte = 'j' // push item from memo on stack; index is 4-byte arg
 	opList           byte = 'l' // build list from topmost stack items
-	opEmptyList      byte = ']' // push empty list
-	opObj            byte = 'o' // build & push class instance
 	opPut            byte = 'p' // store stack top in memo; index is string arg
-	opBinput         byte = 'q' //   "     "    "   "   " ;   "    " 1-byte arg
-	opLongBinput     byte = 'r' //   "     "    "   "   " ;   "    " 4-byte arg
 	opSetitem        byte = 's' // add key+value pair to dict
 	opTuple          byte = 't' // build tuple from topmost stack items
-	opEmptyTuple     byte = ')' // push empty tuple
-	opSetitems       byte = 'u' // modify dict by adding topmost key+value pairs
-	opBinfloat       byte = 'G' // push float; arg is 8-byte float encoding
 
 	opTrue  = "I01\n" // not an opcode; see INT docs in pickletools.py
 	opFalse = "I00\n" // not an opcode; see INT docs in pickletools.py
+
+	// Protocol 1
+
+	opPopMark        byte = '1' // discard stack top through topmost markobject
+	opBinint         byte = 'J' // push four-byte signed int
+	opBinint1        byte = 'K' // push 1-byte unsigned int
+	opBinint2        byte = 'M' // push 2-byte unsigned int
+	opBinpersid      byte = 'Q' // push persistent object; id is taken from stack
+	opBinstring      byte = 'T' // push string; counted binary string argument
+	opShortBinstring byte = 'U' //  "     "   ;    "      "       "      " < 256 bytes
+	opBinunicode     byte = 'X' // push Unicode string; counted UTF-8 string argument
+	opAppends        byte = 'e' // extend list on stack by topmost stack slice
+	opBinget         byte = 'h' // push item from memo on stack; index is 1-byte arg
+	opLongBinget     byte = 'j' //  "    "    "    "    "   "  ;   "    " 4-byte arg
+	opEmptyList      byte = ']' // push empty list
+	opEmptyTuple     byte = ')' // push empty tuple
+	opEmptyDict      byte = '}' // push empty dict
+	opObj            byte = 'o' // build & push class instance
+	opBinput         byte = 'q' // store stack top in memo; index is 1-byte arg
+	opLongBinput     byte = 'r' //   "     "    "   "   " ;   "    " 4-byte arg
+	opSetitems       byte = 'u' // modify dict by adding topmost key+value pairs
+	opBinfloat       byte = 'G' // push float; arg is 8-byte float encoding
 
 	// Protocol 2
 
