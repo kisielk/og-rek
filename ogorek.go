@@ -83,8 +83,20 @@ const (
 	opLong1    byte = '\x8a' // push long from < 256 bytes
 	opLong4    byte = '\x8b' // push really big long
 
+	// Protocol 3
+
+	opBinbytes      byte = 'B' // push a Python bytes object (len ule32; [len]data)
+	opShortBinbytes byte = 'C' //  "     "      "      "     (len ule8; [len]data)
+
 	// Protocol 4
+
 	opShortBinUnicode byte = '\x8c' // push short string; UTF-8 length < 256 bytes
+	opBinunicode8     byte = '\x8d' // push Unicode string (len ule64; [len]data)
+	opBinbytes8       byte = '\x8e' // push a Python bytes object (len ule64; [len]data)
+	opEmptySet        byte = '\x8f' // push empty set
+	opAddItems        byte = '\x90' // add items to existing set
+	opFrozenSet       byte = '\x91' // build a frozenset out of mark..top
+	opNewobjEx        byte = '\x92' // build object: cls argv kw -> cls.__new__(*argv, **kw)
 	opStackGlobal     byte = '\x93' // same as OpGlobal but using names on the stacks
 	opMemoize         byte = '\x94' // store top of the stack in memo
 	opFrame           byte = '\x95' // indicate the beginning of a new frame
