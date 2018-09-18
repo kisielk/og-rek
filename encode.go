@@ -54,7 +54,28 @@ func (e *Encoder) Encode(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.w.Write([]byte{opStop})
+	return e.emit(opStop)
+}
+
+// emit writes byte vector into encoder output.
+func (e *Encoder) emitb(b []byte) error {
+	_, err := e.w.Write(b)
+	return err
+}
+
+// emits writes string into encoder output.
+func (e *Encoder) emits(s string) error {
+	return e.emitb([]byte(s))
+}
+
+// emit writes byte arguments into encoder output.
+func (e *Encoder) emit(bv ...byte) error {
+	return e.emitb(bv)
+}
+
+// emitf writes formatted string into encoder output.
+func (e *Encoder) emitf(format string, argv ...interface{}) error {
+	_, err := fmt.Fprintf(e.w, format, argv...)
 	return err
 }
 
@@ -113,8 +134,7 @@ func (e *Encoder) encode(rv reflect.Value) error {
 		return e.encode(rv.Elem())
 
 	case reflect.Invalid:
-		_, err := e.w.Write([]byte{opNone})
-		return err
+		return e.emit(opNone)
 	default:
 		return &TypeError{typ: rk.String()}
 	}
@@ -127,8 +147,7 @@ func (e *Encoder) encodeTuple(t Tuple) error {
 
 	switch l {
 	case 0:
-		_, err := e.w.Write([]byte{opEmptyTuple})
-		return err
+		return e.emit(opEmptyTuple)
 
 	// TODO this are protocol 2 opcodes - check e.protocol before using them
 	//case 1:
@@ -136,7 +155,7 @@ func (e *Encoder) encodeTuple(t Tuple) error {
 	//case 3:
 	}
 
-	_, err := e.w.Write([]byte{opMark})
+	err := e.emit(opMark)
 	if err != nil {
 		return err
 	}
@@ -148,15 +167,14 @@ func (e *Encoder) encodeTuple(t Tuple) error {
 		}
 	}
 
-	_, err = e.w.Write([]byte{opTuple})
-	return err
+	return e.emit(opTuple)
 }
 
 func (e *Encoder) encodeArray(arr reflect.Value) error {
 
 	l := arr.Len()
 
-	_, err := e.w.Write([]byte{opEmptyList, opMark})
+	err := e.emit(opEmptyList, opMark)
 	if err != nil {
 		return err
 	}
@@ -169,17 +187,16 @@ func (e *Encoder) encodeArray(arr reflect.Value) error {
 		}
 	}
 
-	_, err = e.w.Write([]byte{opAppends})
-	return err
+	return e.emit(opAppends)
 }
 
 func (e *Encoder) encodeBool(b bool) error {
 	var err error
 
 	if b {
-		_, err = e.w.Write([]byte(opTrue))
+		err = e.emits(opTrue)
 	} else {
-		_, err = e.w.Write([]byte(opFalse))
+		err = e.emits(opFalse)
 	}
 
 	return err
@@ -190,76 +207,53 @@ func (e *Encoder) encodeBytes(byt []byte) error {
 	l := len(byt)
 
 	if l < 256 {
-		_, err := e.w.Write([]byte{opShortBinstring, byte(l)})
+		err := e.emit(opShortBinstring, byte(l))
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err := e.w.Write([]byte{opBinstring})
-		if err != nil {
-			return err
-		}
-		var b [4]byte
+		var b = [1+4]byte{opBinstring}
 
-		binary.LittleEndian.PutUint32(b[:], uint32(l))
-		_, err = e.w.Write(b[:])
+		binary.LittleEndian.PutUint32(b[1:], uint32(l))
+		err := e.emitb(b[:])
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err := e.w.Write(byt)
-	return err
+	return e.emitb(byt)
 }
 
 func (e *Encoder) encodeFloat(f float64) error {
-	var u uint64
-	u = math.Float64bits(f)
-
-	_, err := e.w.Write([]byte{opBinfloat})
-	if err != nil {
-		return err
-	}
-	var b [8]byte
-	binary.BigEndian.PutUint64(b[:], uint64(u))
-
-	_, err = e.w.Write(b[:])
-	return err
+	u := math.Float64bits(f)
+	var b = [1+8]byte{opBinfloat}
+	binary.BigEndian.PutUint64(b[1:], u)
+	return e.emitb(b[:])
 }
 
 func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
-	var err error
-
 	// FIXME: need support for 64-bit ints
 
 	switch {
 	case i > 0 && i < math.MaxUint8:
-		_, err = e.w.Write([]byte{opBinint1, byte(i)})
-	case i > 0 && i < math.MaxUint16:
-		_, err = e.w.Write([]byte{opBinint2, byte(i), byte(i >> 8)})
-	case i >= math.MinInt32 && i <= math.MaxInt32:
-		_, err = e.w.Write([]byte{opBinint})
-		if err != nil {
-			return err
-		}
-		var b [4]byte
-		binary.LittleEndian.PutUint32(b[:], uint32(i))
-		_, err = e.w.Write(b[:])
-	default: // int64, but as a string :/
-		_, err = e.w.Write([]byte{opInt})
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(e.w, "%d\n", i)
-	}
+		return e.emit(opBinint1, byte(i))
 
-	return err
+	case i > 0 && i < math.MaxUint16:
+		return e.emit(opBinint2, byte(i), byte(i >> 8))
+
+	case i >= math.MinInt32 && i <= math.MaxInt32:
+		var b = [1+4]byte{opBinint}
+		binary.LittleEndian.PutUint32(b[1:], uint32(i))
+		return e.emitb(b[:])
+
+	default: // int64, but as a string :/
+		return e.emitf("%c%d\n", opInt, i)
+	}
 }
 
 func (e *Encoder) encodeLong(b *big.Int) error {
 	// TODO if e.protocol >= 2 use opLong1 & opLong4
-	_, err := fmt.Fprintf(e.w, "%c%dL\n", opLong, b)
-	return err
+	return e.emitf("%c%dL\n", opLong, b)
 }
 
 func (e *Encoder) encodeMap(m reflect.Value) error {
@@ -268,13 +262,13 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 
 	l := len(keys)
 
-	_, err := e.w.Write([]byte{opEmptyDict})
+	err := e.emit(opEmptyDict)
 	if err != nil {
 		return err
 	}
 
 	if l > 0 {
-		_, err := e.w.Write([]byte{opMark})
+		err := e.emit(opMark)
 		if err != nil {
 			return err
 		}
@@ -292,7 +286,7 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 			}
 		}
 
-		_, err = e.w.Write([]byte{opSetitems})
+		err = e.emit(opSetitems)
 		if err != nil {
 			return err
 		}
@@ -306,7 +300,7 @@ func (e *Encoder) encodeString(s string) error {
 }
 
 func (e *Encoder) encodeCall(v *Call) error {
-	_, err := fmt.Fprintf(e.w, "%c%s\n%s\n", opGlobal, v.Callable.Module, v.Callable.Name)
+	err := e.emitf("%c%s\n%s\n", opGlobal, v.Callable.Module, v.Callable.Name)
 	if err != nil {
 		return err
 	}
@@ -314,31 +308,27 @@ func (e *Encoder) encodeCall(v *Call) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.w.Write([]byte{opReduce})
-	return err
+	return e.emit(opReduce)
 }
 
 func (e *Encoder) encodeClass(v *Class) error {
-	_, err := fmt.Fprintf(e.w, "%c'%s'\n%c'%s'\n", opString, v.Module, opString, v.Name)
+	err := e.emitf("%c'%s'\n%c'%s'\n", opString, v.Module, opString, v.Name)
 	if err != nil {
 		return err
 	}
-	_, err = e.w.Write([]byte{opStackGlobal})
-	return err
+	return e.emit(opStackGlobal)
 }
 
 func (e *Encoder) encodeRef(v *Ref) error {
 	if pids, ok := v.Pid.(string); ok && !strings.Contains(pids, "\n") {
-		_, err := fmt.Fprintf(e.w, "%c%s\n", opPersid, pids)
-		return err
+		return e.emitf("%c%s\n", opPersid, pids)
 	} else {
 		// XXX we can use opBinpersid only if .protocol >= 1
 		err := e.encode(reflectValueOf(v.Pid))
 		if err != nil {
 			return err
 		}
-		_, err = e.w.Write([]byte{opBinpersid})
-		return err
+		return e.emit(opBinpersid)
 	}
 }
 
@@ -349,8 +339,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 	// first test if it's one of our internal python structs
 	switch v := st.Interface().(type) {
 	case None:
-		_, err := e.w.Write([]byte{opNone})
-		return err
+		return e.emit(opNone)
 	case Call:
 		return e.encodeCall(&v)
 	case Class:
@@ -363,7 +352,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 
 	structTags := getStructTags(st)
 
-	_, err := e.w.Write([]byte{opEmptyDict, opMark})
+	err := e.emit(opEmptyDict, opMark)
 	if err != nil {
 		return err
 	}
@@ -400,8 +389,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 		}
 	}
 
-	_, err = e.w.Write([]byte{opSetitems})
-	return err
+	return e.emit(opSetitems)
 }
 
 func reflectValueOf(v interface{}) reflect.Value {
