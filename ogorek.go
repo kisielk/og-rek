@@ -391,7 +391,7 @@ func (d *Decoder) loadFloat() error {
 	if err != nil {
 		return err
 	}
-	d.push(interface{}(v))
+	d.push(v)
 	return nil
 }
 
