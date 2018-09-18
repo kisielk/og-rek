@@ -579,7 +579,7 @@ func (d *Decoder) reduce() error {
 	if !ok {
 		return fmt.Errorf("pickle: reduce: invalid class: %T", xclass)
 	}
-	d.stack = append(d.stack, Call{Callable: class, Args: args})
+	d.push(Call{Callable: class, Args: args})
 	return nil
 }
 
@@ -743,7 +743,7 @@ func (d *Decoder) global() error {
 		return err
 	}
 	sname := string(name)
-	d.stack = append(d.stack, Class{Module: smodule, Name: sname})
+	d.push(Class{Module: smodule, Name: sname})
 	return nil
 }
 
@@ -999,7 +999,7 @@ func (d *Decoder) binFloat() error {
 		return err
 	}
 	u := binary.BigEndian.Uint64(b[:])
-	d.stack = append(d.stack, math.Float64frombits(u))
+	d.push(math.Float64frombits(u))
 	return nil
 }
 
@@ -1046,7 +1046,7 @@ func (d *Decoder) stackGlobal() error {
 		return fmt.Errorf("pickle: stackGlobal: invalid module: %T", xmodule)
 	}
 
-	d.stack = append(d.stack, Class{Module: module, Name: name})
+	d.push(Class{Module: module, Name: name})
 	return nil
 }
 
