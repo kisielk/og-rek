@@ -146,6 +146,14 @@ var tests = []TestEntry{
 	X("None", None{},
 		P0_("N.")), // NONE
 
+	X("True", true,
+		P01("I01\n."), // INT 01
+		P2_("\x88.")), // NEWTRUE
+
+	X("False", false,
+		P01("I00\n."), // INT 00
+		P2_("\x89.")), // NEWFALSE
+
 	X("int(5)", int64(5),
 		I("I5\n.")), // INT
 
