@@ -215,15 +215,36 @@ var tests = []TestEntry{
 		I("(lp0\nI1\naI2\naI3\naI01\na.")),
 
 	X("str('abc')", "abc",
-		I("S'abc'\np0\n.")),
+		P0("S\"abc\"\n."),           // STRING
+		P12("U\x03abc."),            // SHORT_BINSTRING
+		P3("X\x03\x00\x00\x00abc."), // BINUNICODE
+		P4_("\x8c\x03abc."),         // SHORT_BINUNICODE
+		I("T\x03\x00\x00\x00abc."),  // BINSTRING
+		I("S'abc'\np0\n."),
+		I("S'abc'\n.")),
 
 	X("unicode('日本語')", "日本語",
-		I("\x8c\t\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e\x94."), // SHORT_BINUNICODE
-		I("V\\u65e5\\u672c\\u8a9e\np0\n.")),                  // UNICODE
+		P0("S\"日本語\"\n."),                                 // STRING
+		P12("U\x09日本語."),                                  // SHORT_BINSTRING
+		P3("X\x09\x00\x00\x00日本語."),                       // BINUNICODE
+		P4_("\x8c\x09\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e."), // SHORT_BINUNICODE
+
+		I("V\\u65e5\\u672c\\u8a9e\np0\n."),                           // UNICODE
+		I("X\x09\x00\x00\x00\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e.")), // BINUNICODE
+		// TODO BINUNICODE8
 
 	X("unicode('\\' 知事少时烦恼少、识人多处是非多。')", "' 知事少时烦恼少、识人多处是非多。",
 		// UNICODE
-		I("V' \\u77e5\\u4e8b\\u5c11\\u65f6\\u70e6\\u607c\\u5c11\\u3001\\u8bc6\\u4eba\\u591a\\u5904\\u662f\\u975e\\u591a\\u3002\n.")),
+		I("V' \\u77e5\\u4e8b\\u5c11\\u65f6\\u70e6\\u607c\\u5c11\\u3001\\u8bc6\\u4eba\\u591a\\u5904\\u662f\\u975e\\u591a\\u3002\n."),
+
+		// BINUNICODE
+		P3("X\x32\x00\x00\x00' \xe7\x9f\xa5\xe4\xba\x8b\xe5\xb0\x91\xe6\x97\xb6\xe7\x83\xa6\xe6\x81\xbc\xe5\xb0\x91\xe3\x80\x81\xe8\xaf\x86\xe4\xba\xba\xe5\xa4\x9a\xe5\xa4\x84\xe6\x98\xaf\xe9\x9d\x9e\xe5\xa4\x9a\xe3\x80\x82."),
+
+		// SHORT_BINUNICODE
+		P4_("\x8c\x32' \xe7\x9f\xa5\xe4\xba\x8b\xe5\xb0\x91\xe6\x97\xb6\xe7\x83\xa6\xe6\x81\xbc\xe5\xb0\x91\xe3\x80\x81\xe8\xaf\x86\xe4\xba\xba\xe5\xa4\x9a\xe5\xa4\x84\xe6\x98\xaf\xe9\x9d\x9e\xe5\xa4\x9a\xe3\x80\x82.")),
+
+		// TODO BINUNICODE8
+
 
 	X("dict({})", make(map[interface{}]interface{}),
 		I("(dp0\n.")),
@@ -239,11 +260,15 @@ var tests = []TestEntry{
 
 	X(`persref("abc")`, Ref{"abc"},
 		P0("Pabc\n."),                // PERSID
-		P12("U\x03abcQ.")),           // SHORT_BINSTRING + BINPERSID
+		P12("U\x03abcQ."),            // SHORT_BINSTRING + BINPERSID
+		P3("X\x03\x00\x00\x00abcQ."), // BINUNICODE + BINPERSID
+		P4_("\x8c\x03abcQ.")),        // SHORT_BINUNICODE + BINPERSID
 
 	X(`persref("abc\nd")`, Ref{"abc\nd"},
 		P0(errP0PersIDStringLineOnly),   // cannot be encoded
-		P12("U\x05abc\ndQ.")),           // SHORT_BINSTRING + BINPERSID
+		P12("U\x05abc\ndQ."),            // SHORT_BINSTRING + BINPERSID
+		P3("X\x05\x00\x00\x00abc\ndQ."), // BINUNICODE + BINPERSID
+		P4_("\x8c\x05abc\ndQ.")),        // SHORT_BINUNICODE + BINPERSID
 
 	X(`persref((1, 2))`, Ref{Tuple{int64(1), int64(2)}},
 		P0(errP0PersIDStringLineOnly), // cannot be encoded

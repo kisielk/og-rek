@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -259,25 +260,73 @@ func (e *Encoder) encodeBool(b bool) error {
 }
 
 func (e *Encoder) encodeBytes(byt []byte) error {
+	return e.encodeString(string(byt))
+}
 
-	l := len(byt)
-
-	if l < 256 {
-		err := e.emit(opShortBinstring, byte(l))
-		if err != nil {
-			return err
-		}
-	} else {
-		var b = [1+4]byte{opBinstring}
-
-		binary.LittleEndian.PutUint32(b[1:], uint32(l))
-		err := e.emitb(b[:])
-		if err != nil {
-			return err
-		}
+func (e *Encoder) encodeString(s string) error {
+	// protocol >= 3 -> encode string as unicode object
+	// (as python3 does)
+	if e.config.Protocol >= 3 {
+		return e.encodeUnicode(s)
 	}
 
-	return e.emitb(byt)
+	l := len(s)
+
+	// protocol >= 1  ->  BINSTRING*
+	if e.config.Protocol >= 1 {
+		if l < 256 {
+			err := e.emit(opShortBinstring, byte(l))
+			if err != nil {
+				return err
+			}
+		} else {
+			var b = [1+4]byte{opBinstring}
+
+			binary.LittleEndian.PutUint32(b[1:], uint32(l))
+			err := e.emitb(b[:])
+			if err != nil {
+				return err
+			}
+		}
+
+		return e.emits(s)
+	}
+
+	// protocol 0: STRING
+	// XXX Python uses both ' and " for quoting - we quote with " only.
+	// XXX -> use https://godoc.org/lab.nexedi.com/kirr/go123/xfmt#AppendQuotePy ?
+	return e.emitf("%c%q\n", opString, s)
+}
+
+// encodeUnicode emits UTF-8 encoded string s as unicode pickle object.
+func (e *Encoder) encodeUnicode(s string) error {
+	// protocol >= 1  -> BINUNICODE*
+	if e.config.Protocol >= 1 {
+		l := len(s)
+
+		// protocol >= 4  -> SHORT_BINUNICODE
+		if l < 256 && e.config.Protocol >= 4 {
+			err := e.emit(opShortBinUnicode, byte(l))
+			if err != nil {
+				return err
+			}
+		} else {
+			var b = [1+4]byte{opBinunicode}
+
+			binary.LittleEndian.PutUint32(b[1:], uint32(l))
+			err := e.emitb(b[:])
+			if err != nil {
+				return err
+			}
+		}
+
+		return e.emits(s)
+	}
+
+	// protocol 0: UNICODE
+	us := strconv.QuoteToASCII(s) // "hello\nмир" -> `"hello\n\u043c\u0438\u0440"`
+	us = us[1 : len(us)-1]        //              -> `hello\n\u043c\u0438\u0440`
+	return e.emitf("%c%s\n", opUnicode, us)
 }
 
 func (e *Encoder) encodeFloat(f float64) error {
@@ -358,10 +407,6 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 	}
 
 	return nil
-}
-
-func (e *Encoder) encodeString(s string) error {
-	return e.encodeBytes([]byte(s))
 }
 
 func (e *Encoder) encodeCall(v *Call) error {
