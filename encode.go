@@ -165,16 +165,35 @@ func (e *Encoder) encode(rv reflect.Value) error {
 func (e *Encoder) encodeTuple(t Tuple) error {
 	l := len(t)
 
-	switch l {
-	case 0:
-		return e.emit(opEmptyTuple)
+	// protocol >= 2: [1-3]() -> TUPLE{1-3}
+	if e.config.Protocol >= 2 && (1 <= l && l <= 3) {
+		for i := range t {
+			err := e.encode(reflectValueOf(t[i]))
+			if err != nil {
+				return err
+			}
+		}
 
-	// TODO this are protocol 2 opcodes - check e.protocol before using them
-	//case 1:
-	//case 2:
-	//case 3:
+		var op byte
+		switch l {
+		case 1:
+			op = opTuple1
+		case 2:
+			op = opTuple2
+		case 3:
+			op = opTuple3
+		}
+
+		return e.emit(op)
 	}
 
+	// protocol >= 1: ø tuple -> EMPTY_TUPLE
+	if e.config.Protocol >= 1 && l == 0 {
+		return e.emit(opEmptyTuple)
+	}
+
+	// general case: MARK ... TUPLE
+	// TODO detect cycles and double references to the same object
 	err := e.emit(opMark)
 	if err != nil {
 		return err

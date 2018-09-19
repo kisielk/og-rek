@@ -176,19 +176,31 @@ var tests = []TestEntry{
 		//I("\x8b\x09\x00\x00\x00\xffm\xa1b\x86\xce\xfd\xaa\x00.")), // LONG4 TODO
 
 	X("tuple()", Tuple{},
-		I("(t.")), // MARK + TUPLE
+		P0("(t."),  // MARK + TUPLE
+		P1_(").")), // EMPTY_TUPLE
 
 	X("tuple((1,))", Tuple{int64(1)},
-		I("I1\n\x85.")), // TUPLE1 + INT
+		P0("(I1\nt."),     // MARK + TUPLE + INT
+		P1("(K\x01t."),    // MARK + TUPLE + BININT1
+		P2_("K\x01\x85."), // TUPLE1 + BININT1
+		I("I1\n\x85.")),   // TUPLE1 + INT
 
 	X("tuple((1,2))", Tuple{int64(1), int64(2)},
-		I("(I1\nI2\ntp0\n."), // MARK + TUPLE + INT
-		I("I1\nI2\n\x86.")),  // TUPLE2 + INT
+		P0("(I1\nI2\nt."),      // MARK + TUPLE + INT
+		P1("(K\x01K\x02t."),    // MARK + TUPLE + BININT1
+		P2_("K\x01K\x02\x86."), // TUPLE2 + BININT1
+		I("I1\nI2\n\x86.")),    // TUPLE2 + INT
 
 	X("tuple((1,2,3))", Tuple{int64(1), int64(2), int64(3)},
-		I("I1\nI2\nI3\n\x87.")), // TUPLE3 + INT
+		P0("(I1\nI2\nI3\nt."),       // MARK + TUPLE + INT
+		P1("(K\x01K\x02K\x03t."),    // MARK + TUPLE + BININT1
+		P2_("K\x01K\x02K\x03\x87."), // TUPLE3 + BININT1
+		I("I1\nI2\nI3\n\x87.")),     // TUPLE3 + INT
 
 	X("tuple(((1,2), (3,4)))", Tuple{Tuple{int64(1), int64(2)}, Tuple{int64(3), int64(4)}},
+		P0("((I1\nI2\nt(I3\nI4\ntt."),            // MARK + INT + TUPLE
+		P1("((K\x01K\x02t(K\x03K\x04tt."),        // MARK + BININT1 + TUPLE
+		P2_("K\x01K\x02\x86K\x03K\x04\x86\x86."), // BININT1 + TUPLE2
 		I("((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n.")),
 
 	X("list([])", []interface{}{},
