@@ -254,10 +254,16 @@ func (e *Encoder) encodeBytes(byt []byte) error {
 }
 
 func (e *Encoder) encodeFloat(f float64) error {
-	u := math.Float64bits(f)
-	var b = [1+8]byte{opBinfloat}
-	binary.BigEndian.PutUint64(b[1:], u)
-	return e.emitb(b[:])
+	// protocol >= 1: BINFLOAT
+	if e.config.Protocol >= 1 {
+		u := math.Float64bits(f)
+		var b = [1+8]byte{opBinfloat}
+		binary.BigEndian.PutUint64(b[1:], u)
+		return e.emitb(b[:])
+	}
+
+	// protocol 0: FLOAT
+	return e.emitf("%c%g\n", opFloat, f)
 }
 
 func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
