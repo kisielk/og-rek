@@ -2,6 +2,7 @@ package ogórek
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -383,17 +384,25 @@ func (e *Encoder) encodeClass(v *Class) error {
 	return e.emit(opStackGlobal)
 }
 
+var errP0PersIDStringLineOnly = errors.New(`protocol 0: persistent ID must be string without \n`)
+
 func (e *Encoder) encodeRef(v *Ref) error {
-	if pids, ok := v.Pid.(string); ok && !strings.Contains(pids, "\n") {
-		return e.emitf("%c%s\n", opPersid, pids)
-	} else {
-		// XXX we can use opBinpersid only if .protocol >= 1
-		err := e.encode(reflectValueOf(v.Pid))
-		if err != nil {
-			return err
+	// protocol 0: pid must be string without \n
+	if e.config.Protocol == 0 {
+		pids, ok := v.Pid.(string)
+		if !ok || strings.Contains(pids, "\n") {
+			return errP0PersIDStringLineOnly
 		}
-		return e.emit(opBinpersid)
+
+		return e.emitf("%c%s\n", opPersid, pids)
 	}
+
+	// protocol >= 1: we can use opBinpersid which allows arbitrary object as argument
+	err := e.encode(reflectValueOf(v.Pid))
+	if err != nil {
+		return err
+	}
+	return e.emit(opBinpersid)
 }
 
 func (e *Encoder) encodeStruct(st reflect.Value) error {
