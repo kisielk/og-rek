@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const highestProtocol = 4 // highest protocol version we support generating
+
 type TypeError struct {
 	typ string
 }
@@ -26,6 +28,9 @@ type Encoder struct {
 
 // EncoderConfig allows to tune Encoder.
 type EncoderConfig struct {
+	// Protocol specifies which pickle protocol version should be used.
+	Protocol int
+
 	// PersistentRef, if !nil, will be used by encoder to encode objects as persistent references.
 	//
 	// Whenever the encoders sees pointer to a Go struct object, it will call
@@ -39,7 +44,10 @@ type EncoderConfig struct {
 
 // NewEncoder returns a new Encoder struct with default values
 func NewEncoder(w io.Writer) *Encoder {
-	return NewEncoderWithConfig(w, &EncoderConfig{})
+	return NewEncoderWithConfig(w, &EncoderConfig{
+		// allow both Python2 and Python3 to decode what ogórek produces by default
+		Protocol: 2,
+	})
 }
 
 // NewEncoderWithConfig is similar to NewEncoder, but allows specifying the encoder configuration.
@@ -49,6 +57,18 @@ func NewEncoderWithConfig(w io.Writer, config *EncoderConfig) *Encoder {
 
 // Encode writes the pickle encoding of v to w, the encoder's writer
 func (e *Encoder) Encode(v interface{}) error {
+	proto := e.config.Protocol
+	if !(0 <= proto && proto <= highestProtocol) {
+		return fmt.Errorf("pickle: encode: invalid protocol %d", proto)
+	}
+	// protocol >= 2  -> emit PROTO <protocol>
+	if proto >= 2 {
+		err := e.emit(opProto, byte(proto))
+		if err != nil {
+			return err
+		}
+	}
+
 	rv := reflectValueOf(v)
 	err := e.encode(rv)
 	if err != nil {
