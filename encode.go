@@ -263,21 +263,24 @@ func (e *Encoder) encodeFloat(f float64) error {
 func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
 	// FIXME: need support for 64-bit ints
 
-	switch {
-	case i > 0 && i < math.MaxUint8:
-		return e.emit(opBinint1, byte(i))
+	// protocol >= 1: BININT*
+	if e.config.Protocol >= 1 {
+		switch {
+		case i > 0 && i < math.MaxUint8:
+			return e.emit(opBinint1, byte(i))
 
-	case i > 0 && i < math.MaxUint16:
-		return e.emit(opBinint2, byte(i), byte(i >> 8))
+		case i > 0 && i < math.MaxUint16:
+			return e.emit(opBinint2, byte(i), byte(i >> 8))
 
-	case i >= math.MinInt32 && i <= math.MaxInt32:
-		var b = [1+4]byte{opBinint}
-		binary.LittleEndian.PutUint32(b[1:], uint32(i))
-		return e.emitb(b[:])
-
-	default: // int64, but as a string :/
-		return e.emitf("%c%d\n", opInt, i)
+		case i >= math.MinInt32 && i <= math.MaxInt32:
+			var b = [1+4]byte{opBinint}
+			binary.LittleEndian.PutUint32(b[1:], uint32(i))
+			return e.emitb(b[:])
+		}
 	}
+
+	// protocol 0: INT
+	return e.emitf("%c%d\n", opInt, i)
 }
 
 func (e *Encoder) encodeLong(b *big.Int) error {
