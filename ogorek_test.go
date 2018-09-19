@@ -167,7 +167,8 @@ var tests = []TestEntry{
 		P1_("J\x45\x23\x01\x00.")), // BININT
 
 	X("float", float64(1.23),
-		I("F1.23\n.")), // FLOAT
+		P0("F1.23\n."),                    // FLOAT
+		P1_("G?\xf3\xae\x14z\xe1G\xae.")), // BINFLOAT
 
 	X("long", bigInt("12321231232131231231"),
 		P0("L12321231232131231231L\n.")), // LONG
