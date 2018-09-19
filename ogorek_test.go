@@ -204,9 +204,14 @@ var tests = []TestEntry{
 		I("((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n.")),
 
 	X("list([])", []interface{}{},
+		P0("(l."), // MARK + LIST
+		P1_("]."), // EMPTY_LIST
 		I("(lp0\n.")),
 
 	X("list([1,2,3,True])", []interface{}{int64(1), int64(2), int64(3), true},
+		P0("(I1\nI2\nI3\nI01\nl."),    // MARK + INT + INT(True) + LIST
+		P1("(K\x01K\x02K\x03I01\nl."), // MARK + BININT1 + INT(True) + LIST
+		P2_("(K\x01K\x02K\x03\x88l."), // MARK + BININT1 + NEW_TRUE + LIST
 		I("(lp0\nI1\naI2\naI3\naI01\na.")),
 
 	X("str('abc')", "abc",
