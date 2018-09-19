@@ -211,8 +211,17 @@ func (e *Encoder) encodeArray(arr reflect.Value) error {
 }
 
 func (e *Encoder) encodeBool(b bool) error {
-	var err error
+	// protocol >= 2  ->  NEWTRUE/NEWFALSE
+	if e.config.Protocol >= 2 {
+		op := opNewfalse
+		if b {
+			op = opNewtrue
+		}
+		return e.emit(op)
+	}
 
+	// INT(01 | 00)
+	var err error
 	if b {
 		err = e.emits(opTrue)
 	} else {
