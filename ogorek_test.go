@@ -59,26 +59,26 @@ const longLine = "28,34,30,55,100,130,87,169,194,202,232,252,267,274,286,315,308
 type TestEntry struct {
 	name string
 
-	// object(s) and pickle. Pickle must decode to objectOut.
+	// object(s) and []pickle. All pickle must decode to objectOut.
 	// Encoding objectIn must give some pickle that decodes to ObjectOut.
 	//
 	// In the usual case objectIn == objectOut and they can only differ if
 	// objectIn contains a Go struct.
 	objectIn  interface{}
-	pickle    string
+	picklev   []string
 	objectOut interface{}
 }
 
 // X is syntatic sugar to prepare one TestEntry.
-func X(name string, object interface{}, pickle string) TestEntry {
-	return TestEntry{name: name, objectIn: object, objectOut: object, pickle: pickle}
+func X(name string, object interface{}, picklev ...string) TestEntry {
+	return TestEntry{name: name, objectIn: object, objectOut: object, picklev: picklev}
 }
 
 // Xloosy is syntatic sugar to prepare one TestEntry with loosy incoding.
 //
 // It should be used only if objectIn contains Go structs.
-func Xloosy(name string, objectIn, objectOut interface{}, pickle string) TestEntry {
-	return TestEntry{name: name, objectIn: objectIn, objectOut: objectOut, pickle: pickle}
+func Xloosy(name string, objectIn, objectOut interface{}, picklev ...string) TestEntry {
+	return TestEntry{name: name, objectIn: objectIn, objectOut: objectOut, picklev: picklev}
 }
 
 // tests is the main registry for decode/encode tests.
@@ -104,17 +104,15 @@ var tests = []TestEntry{
 	X("tuple()", Tuple{},
 		"(t."),
 
+	X("tuple((1,))", Tuple{int64(1)},
+		"I1\n\x85."), // TUPLE1 + INT
+
 	X("tuple((1,2))", Tuple{int64(1), int64(2)},
-		"(I1\nI2\ntp0\n."),
+		"(I1\nI2\ntp0\n.", // MARK + TUPLE + INT
+		"I1\nI2\n\x86."),  // TUPLE2 + INT
 
-	X("tuple with top 1 items from stack", Tuple{int64(0)},
-		"I0\n\x85."),
-
-	X("tuple with top 2 items from stack", Tuple{int64(0), int64(1)},
-		"I0\nI1\n\x86."),
-
-	X("tuple with top 3 items from stack", Tuple{int64(0), int64(1), int64(2)},
-		"I0\nI1\nI2\n\x87."),
+	X("tuple((1,2,3))", Tuple{int64(1), int64(2), int64(3)},
+		"I1\nI2\nI3\n\x87."), // TUPLE3 + INT
 
 	X("tuple(((1,2), (3,4)))", Tuple{Tuple{int64(1), int64(2)}, Tuple{int64(3), int64(4)}},
 		"((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n."),
@@ -129,8 +127,7 @@ var tests = []TestEntry{
 		"S'abc'\np0\n."),
 
 	X("unicode('日本語')", "日本語",
-		"V\\u65e5\\u672c\\u8a9e\np0\n."), // UNICODE
-	X("unicode2('日本語')", "日本語",
+		"V\\u65e5\\u672c\\u8a9e\np0\n.",                    // UNICODE
 		"\x8c\t\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e\x94."), // SHORT_BINUNICODE
 
 	X("unicode('\\' 知事少时烦恼少、识人多处是非多。')", "' 知事少时烦恼少、识人多处是非多。",
@@ -189,9 +186,11 @@ type foo struct {
 // TestDecode verifies ogórek decoder.
 func TestDecode(t *testing.T) {
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s/%q", test.name, test.pickle), func(t *testing.T) {
-			testDecode(t, test.objectOut, test.pickle)
-		})
+		for _, pickle := range test.picklev {
+			t.Run(fmt.Sprintf("%s/%q", test.name, pickle), func(t *testing.T) {
+				testDecode(t, test.objectOut, pickle)
+			})
+		}
 	}
 }
 
@@ -529,8 +528,12 @@ func TestFuzzCrashers(t *testing.T) {
 func BenchmarkDecode(b *testing.B) {
 	// prepare one large pickle stream from all test pickles
 	input := make([]byte, 0)
+	npickle := 0
 	for _, test := range tests {
-		input = append(input, test.pickle...)
+		for _, pickle := range test.picklev {
+			input = append(input, pickle...)
+			npickle++
+		}
 	}
 
 	b.ResetTimer()
@@ -549,8 +552,8 @@ func BenchmarkDecode(b *testing.B) {
 			}
 		}
 
-		if j != len(tests) {
-			b.Fatalf("unexpected # of decode steps: got %v  ; want %v", j, len(tests))
+		if j != npickle {
+			b.Fatalf("unexpected # of decode steps: got %v  ; want %v", j, npickle)
 		}
 	}
 }
@@ -561,7 +564,7 @@ func BenchmarkEncode(b *testing.B) {
 	approxOutSize := 0
 	for _, test := range tests {
 		input = append(input, test.objectIn)
-		approxOutSize += len(test.pickle)
+		approxOutSize += len(test.picklev[0])
 	}
 
 	buf := bytes.NewBuffer(make([]byte, approxOutSize))
