@@ -155,13 +155,16 @@ var tests = []TestEntry{
 		P2_("\x89.")), // NEWFALSE
 
 	X("int(5)", int64(5),
-		I("I5\n.")), // INT
+		P0("I5\n."),    // INT
+		P1_("K\x05.")), // BININT1
 
 	X("int(0x123)", int64(0x123),
-		I("I291\n.")), // INT
+		P0("I291\n."),      // INT
+		P1_("M\x23\x01.")), // BININT2
 
 	X("int(0x12345)", int64(0x12345),
-		I("I74565\n.")), // INT
+		P0("I74565\n."),            // INT
+		P1_("J\x45\x23\x01\x00.")), // BININT
 
 	X("float", float64(1.23),
 		I("F1.23\n.")), // FLOAT
