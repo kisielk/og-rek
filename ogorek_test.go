@@ -171,7 +171,9 @@ var tests = []TestEntry{
 		P1_("G?\xf3\xae\x14z\xe1G\xae.")), // BINFLOAT
 
 	X("long", bigInt("12321231232131231231"),
-		P0("L12321231232131231231L\n.")), // LONG
+		P0("L12321231232131231231L\n."),                           // LONG
+		I("\x8a\x09\xffm\xa1b\x86\xce\xfd\xaa\x00.")),             // LONG1
+		//I("\x8b\x09\x00\x00\x00\xffm\xa1b\x86\xce\xfd\xaa\x00.")), // LONG4 TODO
 
 	X("tuple()", Tuple{},
 		I("(t.")), // MARK + TUPLE
