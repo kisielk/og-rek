@@ -213,7 +213,14 @@ func (e *Encoder) encodeArray(arr reflect.Value) error {
 
 	l := arr.Len()
 
-	err := e.emit(opEmptyList, opMark)
+	// protocol >= 1: ø list -> EMPTY_LIST
+	if e.config.Protocol >= 1 && l == 0 {
+		return e.emit(opEmptyList)
+	}
+
+	// MARK + ... + LIST
+	// TODO detect cycles and double references to the same object
+	err := e.emit(opMark)
 	if err != nil {
 		return err
 	}
@@ -226,7 +233,7 @@ func (e *Encoder) encodeArray(arr reflect.Value) error {
 		}
 	}
 
-	return e.emit(opAppends)
+	return e.emit(opList)
 }
 
 func (e *Encoder) encodeBool(b bool) error {
