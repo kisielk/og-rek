@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"reflect"
@@ -91,69 +92,79 @@ var tests = []struct {
 	{"STACK_GLOBAL opcode", "S'foo'\nS'bar'\n\x93.", Class{Module: "foo", Name: "bar"}},
 }
 
+// TestDecode verifies ogórek decoder.
 func TestDecode(t *testing.T) {
 	for _, test := range tests {
-		// decode(input) -> expected
-		buf := bytes.NewBufferString(test.input)
+		t.Run(fmt.Sprintf("%s/%q", test.name, test.input), func(t *testing.T) {
+			testDecode(t, test.expected, test.input)
+		})
+	}
+}
+
+// testDecode decodes input and verifies it is == object.
+//
+// It also verifies decoder robustness - via feeding it various kinds of
+// corrupt data derived from input.
+func testDecode(t *testing.T, object interface{}, input string) {
+	// decode(input) -> expected
+	buf := bytes.NewBufferString(input)
+	dec := NewDecoder(buf)
+	v, err := dec.Decode()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(v, object) {
+		t.Errorf("decode:\nhave: %#v\nwant: %#v", v, object)
+	}
+
+	// decode more -> EOF
+	v, err = dec.Decode()
+	if !(v == nil && err == io.EOF) {
+		t.Errorf("decode: no EOF at end: v = %#v  err = %#v", v, err)
+	}
+
+	// expected (= decoded(input)) -> encode -> decode = identity
+	buf.Reset()
+	enc := NewEncoder(buf)
+	err = enc.Encode(object)
+	if err != nil {
+		t.Errorf("encode(expected): %v", err)
+	} else {
 		dec := NewDecoder(buf)
 		v, err := dec.Decode()
 		if err != nil {
 			t.Error(err)
 		}
 
-		if !reflect.DeepEqual(v, test.expected) {
-			t.Errorf("%s: decode:\nhave: %#v\nwant: %#v", test.name, v, test.expected)
+		if !reflect.DeepEqual(v, object) {
+			t.Errorf("expected -> decode -> encode != identity\nhave: %#v\nwant: %#v", v, object)
 		}
+	}
 
-		// decode more -> EOF
-		v, err = dec.Decode()
-		if !(v == nil && err == io.EOF) {
-			t.Errorf("%s: decode: no EOF at end: v = %#v  err = %#v", test.name, v, err)
+	// decode(truncated input) -> must return io.ErrUnexpectedEOF
+	for l := len(input) - 1; l > 0; l-- {
+		buf := bytes.NewBufferString(input[:l])
+		dec := NewDecoder(buf)
+		v, err := dec.Decode()
+		if !(v == nil && err == io.ErrUnexpectedEOF) {
+			t.Errorf("no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", l, v, err)
 		}
+	}
 
-		// expected (= decoded(input)) -> encode -> decode = identity
-		buf.Reset()
-		enc := NewEncoder(buf)
-		err = enc.Encode(test.expected)
-		if err != nil {
-			t.Errorf("%s: encode(expected): %v", test.name, err)
-		} else {
-			dec := NewDecoder(buf)
-			v, err := dec.Decode()
-			if err != nil {
-				t.Error(err)
-			}
-
-			if !reflect.DeepEqual(v, test.expected) {
-				t.Errorf("%s: expected -> decode -> encode != identity\nhave: %#v\nwant: %#v", test.name, v, test.expected)
-			}
-		}
-
-		// for truncated input io.ErrUnexpectedEOF must be returned
-		for l := len(test.input) - 1; l > 0; l-- {
-			buf := bytes.NewBufferString(test.input[:l])
-			dec := NewDecoder(buf)
-			//println(test.name, l)
-			v, err := dec.Decode()
-			if !(v == nil && err == io.ErrUnexpectedEOF) {
-				t.Errorf("%s: no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", test.name, l, v, err)
-			}
-		}
-
-		// by using input with omitted prefix we can test how code handles pickle stack overflow:
-		// it must not panic
-		for i := 0; i < len(test.input); i++ {
-			buf := bytes.NewBufferString(test.input[i:])
-			dec := NewDecoder(buf)
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						t.Errorf("%s: panic on input[%d:]: %v", test.name, i, r)
-					}
-				}()
-				dec.Decode()
+	// decode(input with omitted prefix) - tests how code handles pickle stack overflow:
+	// it must not panic.
+	for i := 0; i < len(input); i++ {
+		buf := bytes.NewBufferString(input[i:])
+		dec := NewDecoder(buf)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("panic on input[%d:]: %v", i, r)
+				}
 			}()
-		}
+			dec.Decode()
+		}()
 	}
 }
 
