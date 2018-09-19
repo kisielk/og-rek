@@ -238,12 +238,17 @@ var tests = []TestEntry{
 		I("cfoo\nbar\nS'bing'\n\x85R.")), // GLOBAL + STRING + TUPLE1 + REDUCE
 
 	X(`persref("abc")`, Ref{"abc"},
-		P0("Pabc\n.")), // PERSID
+		P0("Pabc\n."),                // PERSID
+		P12("U\x03abcQ.")),           // SHORT_BINSTRING + BINPERSID
 
 	X(`persref("abc\nd")`, Ref{"abc\nd"},
-		P12("U\x05abc\ndQ.")), // SHORT_BINSTRING + BINPERSID
+		P0(errP0PersIDStringLineOnly),   // cannot be encoded
+		P12("U\x05abc\ndQ.")),           // SHORT_BINSTRING + BINPERSID
 
 	X(`persref((1, 2))`, Ref{Tuple{int64(1), int64(2)}},
+		P0(errP0PersIDStringLineOnly), // cannot be encoded
+		P1("(K\x01K\x02tQ."),          // MARK + BININT1 + TUPLE + BINPERSID
+		P2_("K\x01K\x02\x86Q."),       // BININT1 + TUPLE2 + BINPERSID
 		I("(I1\nI2\ntQ.")),
 
 	// decode only
@@ -584,7 +589,7 @@ func TestPersistentRefs(t *testing.T) {
 	}
 
 	dconf := &DecoderConfig{PersistentLoad: loadref}
-	econf := &EncoderConfig{PersistentRef: getref}
+	econf := &EncoderConfig{PersistentRef: getref, Protocol: 1}
 
 	testv := []struct {
 		input    string
