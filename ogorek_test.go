@@ -557,6 +557,10 @@ func TestDecodeError(t *testing.T) {
 
 		// invalid protocol version
 		"\x80\xffI1\n.",
+
+		// BINSTRING with big len and no data
+		// (might cause out-of-memory DOS if buffer is preallocated blindly)
+		"T\xff\xff\xff\xff.",
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)
