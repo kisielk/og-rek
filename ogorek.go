@@ -643,7 +643,12 @@ func (d *Decoder) loadBinString() error {
 	v := binary.LittleEndian.Uint32(b[:])
 
 	d.buf.Reset()
-	d.buf.Grow(int(v))
+	// don't allow malicious `BINSTRING <bigsize> nodata` to make us out of memory
+	prealloc := int(v)
+	if maxgrow := 0x10000; prealloc > maxgrow {
+		prealloc = maxgrow
+	}
+	d.buf.Grow(prealloc)
 	_, err = io.CopyN(&d.buf, d.r, int64(v))
 	if err != nil {
 		return err
