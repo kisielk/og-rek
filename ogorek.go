@@ -105,6 +105,7 @@ const (
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
 var errNoMarker = errors.New("no marker in stack")
+var errNoMarkReturn = errors.New("pickle: MARK cannot be returned")
 var errStackUnderflow = errors.New("pickle: stack underflow")
 
 // OpcodeError is the error that Decode returns when it sees unknown pickle opcode.
@@ -320,7 +321,18 @@ loop:
 			return nil, err
 		}
 	}
-	return d.pop()
+
+	ret, err := d.pop()
+
+	// don't allow mark to be returned
+	switch ret.(type) {
+	case mark:
+		ret, err = nil, errNoMarkReturn
+
+	default: // ok
+	}
+
+	return ret, err
 }
 
 // readLine reads next line from pickle stream
