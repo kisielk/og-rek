@@ -7,7 +7,7 @@ ogórek is a Go library for encoding and decoding pickles.
 
 Fuzz Testing
 ------------
-Fuzz testing has been implemented for the decoder. To run fuzz tests do the following:
+Fuzz testing has been implemented for decoder and encoder. To run fuzz tests do the following:
 
 ```
 go get github.com/dvyukov/go-fuzz/go-fuzz
