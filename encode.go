@@ -376,37 +376,33 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 
 	l := len(keys)
 
-	err := e.emit(opEmptyDict)
+	// protocol >= 1: ø dict -> EMPTY_DICT
+	if e.config.Protocol >= 1 && l == 0 {
+		return e.emit(opEmptyDict)
+	}
+
+	// MARK + ... + DICT
+	// TODO detect cycles and double references to the same object
+	// XXX sort keys, so the output is stable?
+	err := e.emit(opMark)
 	if err != nil {
 		return err
 	}
 
-	if l > 0 {
-		err := e.emit(opMark)
+	for _, k := range keys {
+		err = e.encode(k)
 		if err != nil {
 			return err
 		}
+		v := m.MapIndex(k)
 
-		for _, k := range keys {
-			err = e.encode(k)
-			if err != nil {
-				return err
-			}
-			v := m.MapIndex(k)
-
-			err = e.encode(v)
-			if err != nil {
-				return err
-			}
-		}
-
-		err = e.emit(opSetitems)
+		err = e.encode(v)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return e.emit(opDict)
 }
 
 func (e *Encoder) encodeCall(v *Call) error {
