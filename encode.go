@@ -466,7 +466,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 
 	structTags := getStructTags(st)
 
-	err := e.emit(opEmptyDict, opMark)
+	err := e.emit(opMark)
 	if err != nil {
 		return err
 	}
@@ -503,7 +503,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 		}
 	}
 
-	return e.emit(opSetitems)
+	return e.emit(opDict)
 }
 
 func reflectValueOf(v interface{}) reflect.Value {
