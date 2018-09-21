@@ -483,7 +483,7 @@ func (d *Decoder) loadBinInt() error {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
-	d.push(int64(v))
+	d.push(int64(int32(v))) // NOTE signed: uint32 -> int32, and only then -> int64
 	return nil
 }
 
