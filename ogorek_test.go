@@ -263,9 +263,27 @@ var tests = []TestEntry{
 
 
 	X("dict({})", make(map[interface{}]interface{}),
+		P0("(d."), // MARK + DICT
+		P1_("}."), // EMPTY_DICT
 		I("(dp0\n.")),
 
+	X("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
+		P0("(S\"a\"\nS\"1\"\nd."),                     // MARK + STRING + DICT
+		P12("(U\x01aU\x011d."),                        // MARK + SHORT_BINSTRING + DICT
+		P3("(X\x01\x00\x00\x00aX\x01\x00\x00\x001d."), // MARK + BINUNICODE + DICT
+		P4_("(\x8c\x01a\x8c\x011d.")),                 // MARK + SHORT_BINUNICODE + DICT
+
 	X("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
+		// map iteration order is not stable - test only decoding
+		I("(S\"a\"\nS\"1\"\nS\"b\"\nS\"2\"\nd."), // P0: MARK + STRING + DICT
+		I("(U\x01aU\x011U\x01bU\x012d."),         // P12: MARK + SHORT_BINSTRING + DICT
+
+		// P3: MARK + BINUNICODE + DICT
+		I("(X\x01\x00\x00\x00aX\x01\x00\x00\x001X\x01\x00\x00\x00bX\x01\x00\x00\x002d."),
+
+		I("(\x8c\x01a\x8c\x011\x8c\x01b\x8c\x012d."), // P4_: MARK + SHORT_BINUNICODE + DICT
+		I("(dS'a'\nS'1'\nsS'b'\nS'2'\ns."),           // MARK + DICT + STRING + SETITEM
+		I("}(U\x01aU\x011U\x01bU\x012u."),            // EMPTY_DICT + MARK + SHORT_BINSTRING + SETITEMS
 		I("(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.")),
 
 	X("foo.bar  # global", Class{Module: "foo", Name: "bar"},
