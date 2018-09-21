@@ -331,7 +331,16 @@ var tests = []TestEntry{
 		[]interface{}{map[interface{}]interface{}{"Foo": "Qux", "Bar": int64(4)}},
 
 		// MARK + STRING + INT + DICT + LIST
-		I("((S\"Foo\"\nS\"Qux\"\nS\"Bar\"\nI4\ndl.")),
+		P0("((S\"Foo\"\nS\"Qux\"\nS\"Bar\"\nI4\ndl."),
+
+		// MARK + SHORT_BINSTRING + BININT1 + DICT + LIST
+		P12("((U\x03FooU\x03QuxU\x03BarK\x04dl."),
+
+		// MARK + BINUNICODE + BININT1 + DICT + LIST
+		P3("((X\x03\x00\x00\x00FooX\x03\x00\x00\x00QuxX\x03\x00\x00\x00BarK\x04dl."),
+
+		// MARK + SHORT_BINUNICODE + BININT1 + DICT + LIST
+		P4_("((\x8c\x03Foo\x8c\x03Qux\x8c\x03BarK\x04dl.")),
 }
 
 // foo is a type to test how encoder handles Go structs.
