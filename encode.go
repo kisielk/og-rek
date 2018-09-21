@@ -406,7 +406,7 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 }
 
 func (e *Encoder) encodeCall(v *Call) error {
-	err := e.emitf("%c%s\n%s\n", opGlobal, v.Callable.Module, v.Callable.Name)
+	err := e.encodeClass(&v.Callable)
 	if err != nil {
 		return err
 	}
@@ -418,11 +418,22 @@ func (e *Encoder) encodeCall(v *Call) error {
 }
 
 func (e *Encoder) encodeClass(v *Class) error {
-	err := e.emitf("%c'%s'\n%c'%s'\n", opString, v.Module, opString, v.Name)
-	if err != nil {
-		return err
+	// PEP 3154: Protocol 4 forbids use of the GLOBAL opcode and replaces
+	// it with STACK_GLOBAL.
+	if e.config.Protocol >= 4 {
+		err := e.encodeString(v.Module)
+		if err != nil {
+			return err
+		}
+		err = e.encodeString(v.Name)
+		if err != nil {
+			return err
+		}
+		return e.emit(opStackGlobal)
 	}
-	return e.emit(opStackGlobal)
+
+	// else use GLOBAL opcode from protocol 0
+	return e.emitf("%c%s\n%s\n", opGlobal, v.Module, v.Name)
 }
 
 var errP0PersIDStringLineOnly = errors.New(`protocol 0: persistent ID must be string without \n`)
