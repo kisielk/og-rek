@@ -325,23 +325,32 @@ loop:
 	return d.popUser()
 }
 
-// readLine reads next line from pickle stream
-// returned line is valid only till next call to readLine
+// readLine reads next line from pickle stream.
+//
+// returned line does not contain \n.
+// returned line is valid only till next call to readLine.
 func (d *Decoder) readLine() ([]byte, error) {
 	var (
 		data     []byte
-		isPrefix = true
 		err      error
 	)
 	d.line = d.line[:0]
-	for isPrefix {
-		data, isPrefix, err = d.r.ReadLine()
-		if err != nil {
-			return d.line, err
-		}
+	for {
+		data, err = d.r.ReadSlice('\n')
 		d.line = append(d.line, data...)
+
+		// either have read till \n or got another error
+		if err != bufio.ErrBufferFull {
+			break
+		}
 	}
-	return d.line, nil
+
+	// trim trailing \n
+	if l := len(d.line); l > 0 && d.line[l-1] == '\n' {
+		d.line = d.line[:l-1]
+	}
+
+	return d.line, err
 }
 
 // userOK tells whether it is ok to return all objects to user.
