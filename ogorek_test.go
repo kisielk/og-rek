@@ -287,10 +287,16 @@ var tests = []TestEntry{
 		I("(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.")),
 
 	X("foo.bar  # global", Class{Module: "foo", Name: "bar"},
-		I("S'foo'\nS'bar'\n\x93.")), // STRING + STACK_GLOBAL
+		P0123("cfoo\nbar\n."),              // GLOBAL
+		P4_("\x8c\x03foo\x8c\x03bar\x93."), // SHORT_BINUNICODE + STACK_GLOBAL
+		I("S'foo'\nS'bar'\n\x93.")),        // STRING + STACK_GLOBAL
 
 	X(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}},
-		I("cfoo\nbar\nS'bing'\n\x85R.")), // GLOBAL + STRING + TUPLE1 + REDUCE
+		P0("cfoo\nbar\n(S\"bing\"\ntR."),                     // GLOBAL + MARK + STRING + TUPLE + REDUCE
+		P1("cfoo\nbar\n(U\x04bingtR."),                       // GLOBAL + MARK + SHORT_BINSTRING + TUPLE + REDUCE
+		P2("cfoo\nbar\nU\x04bing\x85R."),                     // GLOBAL + SHORT_BINSTRING + TUPLE1 + REDUCE
+		P3("cfoo\nbar\nX\x04\x00\x00\x00bing\x85R."),         // GLOBAL + BINUNICODE + TUPLE1 + REDUCE
+		P4_("\x8c\x03foo\x8c\x03bar\x93\x8c\x04bing\x85R.")), // SHORT_BINUNICODE + STACK_GLOBAL + TUPLE1 + REDUCE
 
 	X(`persref("abc")`, Ref{"abc"},
 		P0("Pabc\n."),                // PERSID
