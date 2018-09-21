@@ -562,8 +562,19 @@ func TestDecodeError(t *testing.T) {
 		// (might cause out-of-memory DOS if buffer is preallocated blindly)
 		"T\xff\xff\xff\xff.",
 
-		// it is invalid to return mark object
-		"(.",
+		// it is invalid to expose mark object
+		"(.",                        // MARK
+		"(\x85.",                    // MARK + TUPLE1
+		"((\x86.",                   // MARK·2 + TUPLE2
+		"(((\x87.",                  // MARK·3 + TUPLE3
+		"](a.",                      // EMPTY_LIST + MARK + APPEND
+		"(p0\n0g0\nt.",              // MARK + PUT + POP + GET + TUPLE
+		"(q\x000g0\nt.",             // MARK + BINPUT + ...
+		"(r\x00\x00\x00\x000g0\nt.", // MARK + LONG_BINPUT + ...
+		"(\x940g0\nt.",              // MARK + MEMOIZE + ...
+		"}I1\n(s.",                  // EMPTY_DICT + INT + MARK + SETITEM
+		"}(I1\ns.",                  // EMPTY_DICT + MARK + INT + SETITEM
+		"(Q.",                       // MARK + BINPERSID
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)

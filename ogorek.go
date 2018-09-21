@@ -105,7 +105,7 @@ const (
 var errNotImplemented = errors.New("unimplemented opcode")
 var ErrInvalidPickleVersion = errors.New("invalid pickle version")
 var errNoMarker = errors.New("no marker in stack")
-var errNoMarkReturn = errors.New("pickle: MARK cannot be returned")
+var errNoMarkUse = errors.New("pickle: MARK object cannot be exposed")
 var errStackUnderflow = errors.New("pickle: stack underflow")
 
 // OpcodeError is the error that Decode returns when it sees unknown pickle opcode.
@@ -322,17 +322,7 @@ loop:
 		}
 	}
 
-	ret, err := d.pop()
-
-	// don't allow mark to be returned
-	switch ret.(type) {
-	case mark:
-		ret, err = nil, errNoMarkReturn
-
-	default: // ok
-	}
-
-	return ret, err
+	return d.popUser()
 }
 
 // readLine reads next line from pickle stream
@@ -352,6 +342,20 @@ func (d *Decoder) readLine() ([]byte, error) {
 		d.line = append(d.line, data...)
 	}
 	return d.line, nil
+}
+
+// userOK tells whether it is ok to return all objects to user.
+//
+// for example it is not ok to return the mark object.
+func userOK(objv ...interface{}) error {
+	for _, obj := range objv {
+		switch obj.(type) {
+		case mark:
+			return errNoMarkUse
+		}
+	}
+
+	return nil
 }
 
 // Push a marker
@@ -394,6 +398,18 @@ func (d *Decoder) xpop() interface{} {
 		panic(err)
 	}
 	return v
+}
+
+// popUser pops stack value and checks whether it is ok to return to user.
+func (d *Decoder) popUser() (interface{}, error) {
+	v, err := d.pop()
+	if err != nil {
+		return nil, err
+	}
+	if err := userOK(v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // Discard the stack through to the topmost marker
@@ -563,7 +579,7 @@ func (d *Decoder) loadPersid() error {
 
 // Push a persistent object id from items on the stack
 func (d *Decoder) loadBinPersid() error {
-	pid, err := d.pop()
+	pid, err := d.popUser()
 	if err != nil {
 		return err
 	}
@@ -747,6 +763,9 @@ func (d *Decoder) loadAppend() error {
 	}
 	v := d.xpop()
 	l := d.stack[len(d.stack)-1]
+	if err := userOK(v); err != nil {
+		return err
+	}
 	switch l.(type) {
 	case []interface{}:
 		l := l.([]interface{})
@@ -905,38 +924,51 @@ func (d *Decoder) loadTuple() error {
 	return nil
 }
 
-func (d *Decoder) loadTuple1() error {
-	if len(d.stack) < 1 {
+// tupleN(n) creates tuple from top n stack objects.
+// it serves TUPLE{1,2,3} opcode handlers.
+func (d *Decoder) tupleN(n int) error {
+	if len(d.stack) < n {
 		return errStackUnderflow
 	}
-	k := len(d.stack) - 1
+	k := len(d.stack) - n
+	if err := userOK(d.stack[k:]...); err != nil {
+		return err
+	}
 	v := append(Tuple{}, d.stack[k:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
+}
+
+func (d *Decoder) loadTuple1() error {
+	return d.tupleN(1)
 }
 
 func (d *Decoder) loadTuple2() error {
-	if len(d.stack) < 2 {
-		return errStackUnderflow
-	}
-	k := len(d.stack) - 2
-	v := append(Tuple{}, d.stack[k:]...)
-	d.stack = append(d.stack[:k], v)
-	return nil
+	return d.tupleN(2)
 }
 
 func (d *Decoder) loadTuple3() error {
-	if len(d.stack) < 3 {
-		return errStackUnderflow
-	}
-	k := len(d.stack) - 3
-	v := append(Tuple{}, d.stack[k:]...)
-	d.stack = append(d.stack[:k], v)
-	return nil
+	return d.tupleN(3)
 }
 
 func (d *Decoder) obj() error {
 	return errNotImplemented
+}
+
+// memoTop puts top of the stack into memo[key]; the stack is not changed.
+// it is the worker for handling PUT, BINPUT, ... opcodes
+func (d *Decoder) memoTop(key string) error {
+	if len(d.stack) < 1 {
+		return errStackUnderflow
+	}
+
+	obj := d.stack[len(d.stack)-1]
+	if err := userOK(obj); err != nil {
+		return err
+	}
+
+	d.memo[key] = obj
+	return nil
 }
 
 func (d *Decoder) loadPut() error {
@@ -944,38 +976,25 @@ func (d *Decoder) loadPut() error {
 	if err != nil {
 		return err
 	}
-	if len(d.stack) < 1 {
-		return errStackUnderflow
-	}
-	d.memo[string(line)] = d.stack[len(d.stack)-1]
-	return nil
+	return d.memoTop(string(line))
 }
 
 func (d *Decoder) binPut() error {
-	if len(d.stack) < 1 {
-		return errStackUnderflow
-	}
 	b, err := d.r.ReadByte()
 	if err != nil {
 		return err
 	}
-
-	d.memo[strconv.Itoa(int(b))] = d.stack[len(d.stack)-1]
-	return nil
+	return d.memoTop(strconv.Itoa(int(b)))
 }
 
 func (d *Decoder) longBinPut() error {
-	if len(d.stack) < 1 {
-		return errStackUnderflow
-	}
 	var b [4]byte
 	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
-	d.memo[strconv.Itoa(int(v))] = d.stack[len(d.stack)-1]
-	return nil
+	return d.memoTop(strconv.Itoa(int(v)))
 }
 
 func (d *Decoder) loadSetItem() error {
@@ -984,6 +1003,9 @@ func (d *Decoder) loadSetItem() error {
 	}
 	v := d.xpop()
 	k := d.xpop()
+	if err := userOK(k, v); err != nil {
+		return err
+	}
 	m := d.stack[len(d.stack)-1]
 	switch m := m.(type) {
 	case map[interface{}]interface{}:
@@ -1085,11 +1107,7 @@ func (d *Decoder) stackGlobal() error {
 }
 
 func (d *Decoder) loadMemoize() error {
-	if len(d.stack) < 1 {
-		return errStackUnderflow
-	}
-	d.memo[strconv.Itoa(len(d.memo))] = d.stack[len(d.stack)-1]
-	return nil
+	return d.memoTop(strconv.Itoa(len(d.memo)))
 }
 
 // unquoteChar is like strconv.UnquoteChar, but returns io.ErrUnexpectedEOF
