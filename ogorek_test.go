@@ -231,6 +231,10 @@ var tests = []TestEntry{
 		I("S'abc'\np0\n."),
 		I("S'abc'\n.")),
 
+	// TODO: reenable after we fix string escape decoding (https://github.com/kisielk/og-rek/issues/48)
+	// X(`unicode('abc\r')`, "abc\r",
+	//	I("Vabc\r\n.")),
+
 	X("unicode('日本語')", "日本語",
 		P0("S\"日本語\"\n."),                                 // STRING
 		P12("U\x09日本語."),                                  // SHORT_BINSTRING
@@ -583,6 +587,10 @@ func TestDecodeError(t *testing.T) {
 		"}I1\n(s.",                  // EMPTY_DICT + INT + MARK + SETITEM
 		"}(I1\ns.",                  // EMPTY_DICT + MARK + INT + SETITEM
 		"(Q.",                       // MARK + BINPERSID
+
+		// \r\n should not be read as combind EOL - only \n is
+		"L123L\r\n.",
+		"S'abc'\r\n.",
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)
