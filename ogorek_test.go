@@ -141,7 +141,15 @@ var (
 	P4_   = PP(        4)
 )
 
+// make sure we use test pickles in fuzz corpus
+//go:generate go test -tags gofuzz -run TestFuzzGenerate
+
 // tests is the main registry for decode/encode tests.
+//
+// NOTE whenever you change something here - don't forget to run `go generate`
+// to export test pickles to fuzzing corpus.
+// XXX or better instead of `go generate`, automatically dump all test pickles
+// on every `go test` run?
 var tests = []TestEntry{
 	X("None", None{},
 		P0_("N.")), // NONE
