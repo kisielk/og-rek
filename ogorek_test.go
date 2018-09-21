@@ -174,6 +174,10 @@ var tests = []TestEntry{
 		P0("I74565\n."),            // INT
 		P1_("J\x45\x23\x01\x00.")), // BININT
 
+	X("int(-7)", int64(-7),
+		P0("I-7\n."),               // INT
+		P1_("J\xf9\xff\xff\xff.")), // BININT
+
 	X("float", float64(1.23),
 		P0("F1.23\n."),                    // FLOAT
 		P1_("G?\xf3\xae\x14z\xe1G\xae.")), // BINFLOAT
