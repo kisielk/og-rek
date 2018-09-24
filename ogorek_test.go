@@ -739,6 +739,9 @@ func BenchmarkDecode(b *testing.B) {
 	npickle := 0
 	for _, test := range tests {
 		for _, pickle := range test.picklev {
+			if pickle.err != nil {
+				continue
+			}
 			// not prepending `PROTO <ver>` - decoder should be
 			// able to decode without it.
 			input = append(input, pickle.data...)
