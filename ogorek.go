@@ -12,7 +12,6 @@ import (
 	"io"
 	"math"
 	"math/big"
-	"reflect"
 	"strconv"
 )
 
@@ -809,6 +808,37 @@ func (d *Decoder) global() error {
 	return nil
 }
 
+// mapTryAssign tries to do `m[key] = value`.
+//
+// It checks whether key is of appropriate type, and if yes - succeeds.
+// If key is not appropriate - the map stays unchanged and false is returned.
+func mapTryAssign(m map[interface{}]interface{}, key, value interface{}) (ok bool) {
+	// use panic/recover to detect inappropriate keys.
+	//
+	// We could try to use reflect.TypeOf(key).Comparable() instead, but that
+	// is not generally enough: with Comparable, key type structure has to
+	// be manually walked recursively and each subfield checked for
+	// comparability. -> panic/recover is simpler to use instead.
+	//
+	// See https://github.com/kisielk/og-rek/issues/30#issuecomment-423803200
+	// for details.
+	defer func() {
+		// on invalid dynamic key type runtime panics like below:
+		//
+		//	`panic: runtime error: hash of unhashable type []interface {}`
+		//
+		// we don't try to detect the exact message as mapTryAssign does
+		// only 1 operation.
+		if r := recover(); r != nil {
+			ok = false
+		}
+	}()
+
+	m[key] = value
+	ok = true
+	return
+}
+
 func (d *Decoder) loadDict() error {
 	k, err := d.marker()
 	if err != nil {
@@ -822,10 +852,9 @@ func (d *Decoder) loadDict() error {
 	}
 	for i := 0; i < len(items); i += 2 {
 		key := items[i]
-		if !reflect.TypeOf(key).Comparable() {
+		if !mapTryAssign(m, key, items[i+1]) {
 			return fmt.Errorf("pickle: loadDict: invalid key type %T", key)
 		}
-		m[key] = items[i+1]
 	}
 	d.stack = append(d.stack[:k], m)
 	return nil
@@ -1018,10 +1047,9 @@ func (d *Decoder) loadSetItem() error {
 	m := d.stack[len(d.stack)-1]
 	switch m := m.(type) {
 	case map[interface{}]interface{}:
-		if !reflect.TypeOf(k).Comparable() {
+		if !mapTryAssign(m, k, v) {
 			return fmt.Errorf("pickle: loadSetItem: invalid key type %T", k)
 		}
-		m[k] = v
 	default:
 		return fmt.Errorf("pickle: loadSetItem: expected a map, got %T", m)
 	}
@@ -1045,10 +1073,9 @@ func (d *Decoder) loadSetItems() error {
 		}
 		for i := k + 1; i < len(d.stack); i += 2 {
 			key := d.stack[i]
-			if !reflect.TypeOf(key).Comparable() {
+			if !mapTryAssign(m, key, d.stack[i+1]) {
 				return fmt.Errorf("pickle: loadSetItems: invalid key type %T", key)
 			}
-			m[d.stack[i]] = d.stack[i+1]
 		}
 		d.stack = append(d.stack[:k-1], m)
 	default:
