@@ -724,6 +724,9 @@ func TestFuzzCrashers(t *testing.T) {
 		"(c\n\nc\n\n\x85Rd",
 		"}(U\x040000u",
 		"(\x88d",
+		"(]QNd.",       // PersID([])      -> dict
+		"}]QNs.",       // PersID([])      -> setitem
+		"}(]QNI1\nNu.", // PersID([]) ...  -> setitems
 	}
 
 	for _, c := range crashers {
