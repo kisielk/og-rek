@@ -235,10 +235,6 @@ var tests = []TestEntry{
 		I("S'abc'\np0\n."),
 		I("S'abc'\n.")),
 
-	// TODO: reenable after we fix string escape decoding (https://github.com/kisielk/og-rek/issues/48)
-	// X(`unicode('abc\r')`, "abc\r",
-	//	I("Vabc\r\n.")),
-
 	X("unicode('日本語')", "日本語",
 		P0("S\"日本語\"\n."),                                 // STRING
 		P12("U\x09日本語."),                                  // SHORT_BINSTRING
@@ -261,8 +257,8 @@ var tests = []TestEntry{
 
 		// TODO BINUNICODE8
 
-	// str with many control characters at P0
-	// this exercises escape-based STRING coding
+	// str/unicode with many control characters at P0
+	// this exercises escape-based STRING/UNICODE coding
 
 	X(`str('\x80ми\nр\r\u2028\\u1234\\U00004321') # text escape`, "\x80ми\nр\r\u2028\\u1234\\U00004321",
 		P0("S\"\\x80ми\\nр\\r\\xe2\\x80\\xa8\\\\u1234\\\\U00004321\"\n."),
@@ -270,6 +266,12 @@ var tests = []TestEntry{
 
 	X(`str("hel'lo")`, "hel'lo", I("S'hel'lo'\n.")),      // non-escaped ' inside '-quotes
 	X(`str("hel\"lo")`, "hel\"lo", I("S\"hel\"lo\"\n.")), // non-escaped " inside "-quotes
+
+
+	X(`unicode(r'мир\n\r\x00'+'\r') # text escape`, `мир\n\r\x00`+"\r",
+		I("V\\u043c\\u0438\\u0440\\n\\r\\x00" + // only \u and \U are decoded - not \n \r ...
+			"\r" +                          // raw \r - ok, not lost
+			"\n.")),
 
 
 	X("dict({})", make(map[interface{}]interface{}),

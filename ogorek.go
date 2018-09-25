@@ -711,36 +711,16 @@ func (d *Decoder) loadShortBinString() error {
 
 func (d *Decoder) loadUnicode() error {
 	line, err := d.readLine()
-
 	if err != nil {
 		return err
 	}
-	sline := string(line)
 
-	d.buf.Reset()
-	d.buf.Grow(len(line)) // approximation
-
-	for len(sline) > 0 {
-		var r rune
-		var err error
-		for len(sline) > 0 && sline[0] == '\'' {
-			d.buf.WriteByte(sline[0])
-			sline = sline[1:]
-		}
-		if len(sline) == 0 {
-			break
-		}
-		r, _, sline, err = unquoteChar(sline, '\'')
-		if err != nil {
-			return err
-		}
-		d.buf.WriteRune(r)
-	}
-	if len(sline) > 0 {
-		return fmt.Errorf("characters remaining after loadUnicode operation: %s", sline)
+	text, err := pydecodeRawUnicodeEscape(string(line))
+	if err != nil {
+		return err
 	}
 
-	d.push(d.buf.String())
+	d.push(text)
 	return nil
 }
 
