@@ -39,3 +39,25 @@ func TestPyDecodeStringEscape(t *testing.T) {
 		{`\u1234\U00001234\c`, `\u1234\U00001234\c`},
 	})
 }
+
+func TestPyDecodeRawUnicodeEscape(t *testing.T) {
+	testCodec(t, pydecodeRawUnicodeEscape, []CodecTestCase{
+		{`hello`, "hello"},
+		{"\x00\x01\x80\xfe\xff", "\u0000\u0001\u0080\u00fe\u00ff"},
+		{`\`, `\`},
+		{`\\`, `\\`},
+		{`\\\`, `\\\`},
+		{`\\\\`, `\\\\`},
+		{`\u1234\U00004321`, "\u1234\U00004321"},
+		{`\\u1234\\U00004321`, `\\u1234\\U00004321`},
+		{`\\\u1234\\\U00004321`, "\\\\\u1234\\\\\U00004321"},
+		{`\\\\u1234\\\\U00004321`, `\\\\u1234\\\\U00004321`},
+		{`\\\\\u1234\\\\\U00004321`, "\\\\\\\\\u1234\\\\\\\\\U00004321"},
+		// vvv stays as is
+		{"hello\\\nworld", "hello\\\nworld"},
+		{`\'\"`, `\'\"`},
+		{`\b\f\t\n\r\v\a`, `\b\f\t\n\r\v\a`},
+		{`\000\001\376\377`, `\000\001\376\377`},
+		{`\x00\x01\x7f\x80\xfe\xff`, `\x00\x01\x7f\x80\xfe\xff`},
+	})
+}

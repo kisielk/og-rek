@@ -139,3 +139,56 @@ loop:
 
 	return string(out), nil
 }
+
+// pydecodeRawUnicodeEscape decodes input according to "raw-unicode-escape" Python codec.
+//
+// The codec is essentially defined here:
+// https://github.com/python/cpython/blob/v2.7.15-198-g69d0bc1430d/Objects/unicodeobject.c#L3204
+func pydecodeRawUnicodeEscape(s string) (string, error) {
+	out := make([]rune, 0, len(s))
+
+loop:
+	for nescape := 0; len(s) > 0; {
+		c := s[0]
+
+		// non-escape bytes are interpreted as unicode ordinals
+		if c != '\\' {
+			out = append(out, rune(c))
+			s = s[1:]
+			nescape = 0
+			continue
+		}
+		nescape++
+
+		// \u are only interpreted if N(leading \) is odd.
+		if nescape % 2 == 0 || len(s) < 2 {
+			out = append(out, '\\')
+			s = s[1:]
+			continue
+		}
+
+		switch c = s[1]; c {
+		// \c (anything - including \\ - not \u or \U)
+		default:
+			out = append(out, '\\')
+			s = s[1:] // not skipping c
+			continue loop
+
+		// escapes we handle (NOTE no \n \r \x etc here)
+		case 'u', 'U': // unicode escapes
+		}
+
+		// here we have \u or \U escapes. Process it via UnquoteChar,
+		// similarly to string-escape.
+		r, _, tail, err := strconv.UnquoteChar(s, 0)
+		if err != nil {
+			return "", err
+		}
+
+		out = append(out, r)
+		s = tail
+		nescape = 0
+	}
+
+	return string(out), nil // encoded to UTF-8
+}
