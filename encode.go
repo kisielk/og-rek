@@ -295,7 +295,10 @@ func (e *Encoder) encodeString(s string) error {
 	// protocol 0: STRING
 	// XXX Python uses both ' and " for quoting - we quote with " only.
 	// XXX -> use https://godoc.org/lab.nexedi.com/kirr/go123/xfmt#AppendQuotePy ?
-	return e.emitf("%c%q\n", opString, s)
+	//
+	// don't use %q - that will use \u and \U in quoting which python won't
+	// interpret when decoding string literals.
+	return e.emitf("%c%s\n", opString, pyquote(s))
 }
 
 // encodeUnicode emits UTF-8 encoded string s as unicode pickle object.
