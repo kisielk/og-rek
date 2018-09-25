@@ -261,6 +261,16 @@ var tests = []TestEntry{
 
 		// TODO BINUNICODE8
 
+	// str with many control characters at P0
+	// this exercises escape-based STRING coding
+
+	X(`str('\x80ми\nр\r\u2028\\u1234\\U00004321') # text escape`, "\x80ми\nр\r\u2028\\u1234\\U00004321",
+		P0("S\"\\x80ми\\nр\\r\\xe2\\x80\\xa8\\\\u1234\\\\U00004321\"\n."),
+		I("S\"\\x80ми\\nр\\r\\xe2\\x80\\xa8\\u1234\\U00004321\"\n.")), // \u and \U not decoded
+
+	X(`str("hel'lo")`, "hel'lo", I("S'hel'lo'\n.")),      // non-escaped ' inside '-quotes
+	X(`str("hel\"lo")`, "hel\"lo", I("S\"hel\"lo\"\n.")), // non-escaped " inside "-quotes
+
 
 	X("dict({})", make(map[interface{}]interface{}),
 		P0("(d."), // MARK + DICT

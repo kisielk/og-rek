@@ -636,11 +636,6 @@ func (d *Decoder) reduce() error {
 	return nil
 }
 
-func decodeStringEscape(b []byte) string {
-	// TODO
-	return string(b)
-}
-
 // Push a string
 func (d *Decoder) loadString() error {
 	line, err := d.readLine()
@@ -666,7 +661,12 @@ func (d *Decoder) loadString() error {
 		return io.ErrUnexpectedEOF
 	}
 
-	d.push(decodeStringEscape(line[1 : len(line)-1]))
+	s, err := pydecodeStringEscape(string(line[1 : len(line)-1]))
+	if err != nil {
+		return err
+	}
+
+	d.push(s)
 	return nil
 }
 
