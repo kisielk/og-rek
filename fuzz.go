@@ -44,7 +44,7 @@ func Fuzz(data []byte) int {
 		obj2, err := dec.Decode()
 		if err != nil {
 			// must succeed, as buf should contain valid pickle from encoder
-			panic(fmt.Sprintf("protocol %d: decode back error: err\npickle: %q", proto, encoded))
+			panic(fmt.Sprintf("protocol %d: decode back error: %s\npickle: %q", proto, err, encoded))
 		}
 
 		if !reflect.DeepEqual(obj, obj2) {
