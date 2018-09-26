@@ -303,6 +303,10 @@ var tests = []TestEntry{
 		P4_("\x8c\x03foo\x8c\x03bar\x93."), // SHORT_BINUNICODE + STACK_GLOBAL
 		I("S'foo'\nS'bar'\n\x93.")),        // STRING + STACK_GLOBAL
 
+	X("foo\n2.bar  # global with \\n", Class{Module: "foo\n2", Name: "bar"},
+		P0123(errP0123GlobalStringLineOnly),
+		P4_("\x8c\x05foo\n2\x8c\x03bar\x93.")), // SHORT_BINUNICODE + STACK_GLOBAL
+
 	X(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}},
 		P0("cfoo\nbar\n(S\"bing\"\ntR."),                     // GLOBAL + MARK + STRING + TUPLE + REDUCE
 		P1("cfoo\nbar\n(U\x04bingtR."),                       // GLOBAL + MARK + SHORT_BINSTRING + TUPLE + REDUCE

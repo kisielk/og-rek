@@ -420,6 +420,8 @@ func (e *Encoder) encodeCall(v *Call) error {
 	return e.emit(opReduce)
 }
 
+var errP0123GlobalStringLineOnly = errors.New(`protocol 0-3: global: module & name must be string without \n`)
+
 func (e *Encoder) encodeClass(v *Class) error {
 	// PEP 3154: Protocol 4 forbids use of the GLOBAL opcode and replaces
 	// it with STACK_GLOBAL.
@@ -436,6 +438,9 @@ func (e *Encoder) encodeClass(v *Class) error {
 	}
 
 	// else use GLOBAL opcode from protocol 0
+	if strings.Contains(v.Module, "\n") || strings.Contains(v.Name, "\n") {
+		return errP0123GlobalStringLineOnly
+	}
 	return e.emitf("%c%s\n%s\n", opGlobal, v.Module, v.Name)
 }
 

@@ -32,8 +32,14 @@ func Fuzz(data []byte) int {
 		err = enc.Encode(obj)
 		if err != nil {
 			// must succeed, as obj was obtained via successful decode
-			// the only exception is that we cannot encode non-string Ref at proto=0
-			if proto == 0 && err == errP0PersIDStringLineOnly {
+			// some  exceptions are accounted for first:
+			switch {
+			case proto == 0 && err == errP0PersIDStringLineOnly:
+				// we cannot encode non-string Ref at proto=0
+				continue
+
+			case proto <= 3 && err == errP0123GlobalStringLineOnly:
+				// we cannot encode Class (GLOBAL opcode) with \n at proto <= 4
 				continue
 			}
 			panic(fmt.Sprintf("protocol %d: encode error: %s", proto, err))
