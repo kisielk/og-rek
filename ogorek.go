@@ -142,6 +142,9 @@ type Decoder struct {
 
 	// reusable buffer for readLine
 	line  []byte
+
+	// protocol version seen in last PROTO opcode; 0 by default.
+	protocol int
 }
 
 // DecoderConfig allows to tune Decoder.
@@ -170,10 +173,11 @@ func NewDecoder(r io.Reader) *Decoder {
 func NewDecoderWithConfig(r io.Reader, config *DecoderConfig) *Decoder {
 	reader := bufio.NewReader(r)
 	return &Decoder{
-		r:      reader,
-		config: config,
-		stack:  make([]interface{}, 0),
-		memo:   make(map[string]interface{}),
+		r:        reader,
+		config:   config,
+		stack:    make([]interface{}, 0),
+		memo:     make(map[string]interface{}),
+		protocol: 0,
 	}
 }
 
@@ -310,6 +314,9 @@ loop:
 				// However CPython also loads PROTO with version 0 and 1 without error.
 				// So we allow all supported versions as PROTO argument.
 				err = ErrInvalidPickleVersion
+			}
+			if err == nil {
+				d.protocol = int(v)
 			}
 
 		default:
