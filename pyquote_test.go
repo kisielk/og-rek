@@ -26,6 +26,16 @@ func testCodec(t *testing.T, transform func(in string)(string, error), testv []C
 	}
 }
 
+func TestPyQuote(t *testing.T) {
+	testCodec(t, func(in string) (string, error) {
+		return pyquote(in), nil
+	}, []CodecTestCase{
+		{`\"'`, `"\\\"'"`},
+		{"\x80hello мир", `"\x80hello мир"`},
+		{"\n\r\x01", `"\n\r\x01"`},
+	})
+}
+
 func TestPyDecodeStringEscape(t *testing.T) {
 	testCodec(t, pydecodeStringEscape, []CodecTestCase{
 		{`hello`, "hello"},
