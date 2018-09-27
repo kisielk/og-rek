@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -61,7 +62,12 @@ const longLine = "28,34,30,55,100,130,87,169,194,202,232,252,267,274,286,315,308
 // data. However the test data can still be used to feed ogórek decoder.
 type TestPickle struct {
 	protov []int
-	data   string // without `PROTO <ver>` prefix
+
+	// pickle data without `PROTO <ver>` prefix.
+	// optionally the prefix template (\x80\xff) could be given for cases
+	// where initial `PROTO <ver>` presence affects decoding semantic.
+	data   string
+
 	err    error  // !nil if encoding should fail
 }
 
@@ -385,6 +391,11 @@ type foo struct {
 	Bar int32
 }
 
+// if test pickle starts from protoPrefixTemplate, this prefix is changed to
+// concrete `PROTO ver` when checking decoding. When checking encoding the
+// protocol prefix is always automatically prepended and is always concrete.
+var protoPrefixTemplate = string([]byte{opProto, 0xff})
+
 // TestDecode verifies ogórek decoder.
 func TestDecode(t *testing.T) {
 	for _, test := range tests {
@@ -393,9 +404,22 @@ func TestDecode(t *testing.T) {
 				continue
 			}
 
-			t.Run(fmt.Sprintf("%s/%q", test.name, pickle.data), func(t *testing.T) {
-				testDecode(t, test.objectOut, pickle.data)
-			})
+			if strings.HasPrefix(pickle.data, protoPrefixTemplate) {
+				// test case asked to have concrete `PROTO ver` prefix.
+				// let's range over all pickle's protocols.
+				for _, proto := range pickle.protov {
+					data := string([]byte{opProto, byte(proto)}) +
+						pickle.data[len(protoPrefixTemplate):]
+
+					t.Run(fmt.Sprintf("%s/%q/proto=%d", test.name, data, proto), func(t *testing.T) {
+						testDecode(t, test.objectOut, data)
+					})
+				}
+			} else {
+				t.Run(fmt.Sprintf("%s/%q", test.name, pickle.data), func(t *testing.T) {
+					testDecode(t, test.objectOut, pickle.data)
+				})
+			}
 		}
 	}
 }
@@ -406,7 +430,7 @@ func TestEncode(t *testing.T) {
 		alreadyTested := make(map[int]bool) // protocols we tested encode with so far
 		for _, pickle := range test.picklev {
 			for _, proto := range pickle.protov {
-				dataOk := pickle.data
+				dataOk := strings.TrimPrefix(pickle.data, protoPrefixTemplate)
 				// protocols >= 2 must include "PROTO <ver>" prefix
 				if proto >= 2 && pickle.err == nil {
 					dataOk = string([]byte{opProto, byte(proto)}) + dataOk
