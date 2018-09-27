@@ -293,6 +293,25 @@ var tests = []TestEntry{
 		P3_("C\x0dhello\nмир\x01."),            // SHORT_BINBYTES
 		I("B\x0d\x00\x00\x00hello\nмир\x01.")), // BINBYTES
 
+	X(`bytearray(b"hello\nмир\x01")`, []byte("hello\nмир\x01"),
+		// GLOBAL + MARK + UNICODE + STRING + TUPLE + REDUCE
+		P0("c__builtin__\nbytearray\n(c_codecs\nencode\n(Vhello\\u000aмир\x01\nS\"latin1\"\ntRtR."),
+
+		// GLOBAL + MARK + BINUNICODE + SHORT_BINSTRING + TUPLE + REDUCE
+		P1("c__builtin__\nbytearray\n(c_codecs\nencode\n(X\x13\x00\x00\x00hello\nÐ¼Ð¸Ñ\xc2\x80\x01U\x06latin1tRtR."),
+
+		// GLOBAL + BINUNICODE + SHORT_BINSTRING + TUPLE{2,1} + REDUCE
+		P2("c__builtin__\nbytearray\nc_codecs\nencode\nX\x13\x00\x00\x00hello\nÐ¼Ð¸Ñ\xc2\x80\x01U\x06latin1\x86R\x85R."),
+
+		// PROTO + GLOBAL + SHORT_BINBYTES + TUPLE1 + REDUCE
+		P3("\x80\xffcbuiltins\nbytearray\nC\rhello\nмир\x01\x85R."),
+
+		// PROTO + SHORT_BINUNICODE + STACK_GLOBAL + SHORT_BINBYTES + TUPLE1 + REDUCE
+		P4_("\x80\xff\x8c\x08builtins\x8c\tbytearray\x93C\rhello\nмир\x01\x85R."),
+
+		// bytearray(text, encoding); GLOBAL + BINUNICODE + TUPLE + REDUCE
+		I("c__builtin__\nbytearray\nq\x00(X\x13\x00\x00\x00hello\n\xc3\x90\xc2\xbc\xc3\x90\xc2\xb8\xc3\x91\xc2\x80\x01q\x01X\x07\x00\x00\x00latin-1q\x02tq\x03Rq\x04.")),
+
 
 	X("dict({})", make(map[interface{}]interface{}),
 		P0("(d."), // MARK + DICT
