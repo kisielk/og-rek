@@ -274,6 +274,20 @@ var tests = []TestEntry{
 			"\n.")),
 
 
+	X(`bytes(b"hello\nмир\x01")`, Bytes("hello\nмир\x01"),
+		// GLOBAL + MARK + UNICODE + STRING + TUPLE + REDUCE
+		P0("c_codecs\nencode\n(Vhello\\u000aмир\x01\nS\"latin1\"\ntR."),
+
+		// GLOBAL + MARK + BINUNICODE + SHORT_BINSTRING + TUPLE + REDUCE
+		P1("c_codecs\nencode\n(X\x13\x00\x00\x00hello\n\xc3\x90\xc2\xbc\xc3\x90\xc2\xb8\xc3\x91\xc2\x80\x01U\x06latin1tR."),
+
+		// GLOBAL + BINUNICODE + SHORT_BINSTRING + TUPLE2 + REDUCE
+		P2("c_codecs\nencode\nX\x13\x00\x00\x00hello\n\xc3\x90\xc2\xbc\xc3\x90\xc2\xb8\xc3\x91\xc2\x80\x01U\x06latin1\x86R."),
+
+		P3_("C\x0dhello\nмир\x01."),            // SHORT_BINBYTES
+		I("B\x0d\x00\x00\x00hello\nмир\x01.")), // BINBYTES
+
+
 	X("dict({})", make(map[interface{}]interface{}),
 		P0("(d."), // MARK + DICT
 		P1_("}."), // EMPTY_DICT

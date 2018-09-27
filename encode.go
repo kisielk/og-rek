@@ -13,6 +13,10 @@ import (
 
 const highestProtocol = 4 // highest protocol version we support generating
 
+// unicode is string that always encodes as unicode pickle object.
+// (regular string encodes to unicode pickle object only for protocol >= 3)
+type unicode string
+
 type TypeError struct {
 	typ string
 }
@@ -111,10 +115,17 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Uint8, reflect.Uint64, reflect.Uint, reflect.Uint32, reflect.Uint16:
 		return e.encodeInt(reflect.Uint, int64(rv.Uint()))
 	case reflect.String:
-		return e.encodeString(rv.String())
+		switch rv.Interface().(type) {
+		case unicode:
+			return e.encodeUnicode(rv.String())
+		case Bytes:
+			return e.encodeBytes(Bytes(rv.String()))
+		default:
+			return e.encodeString(rv.String())
+		}
 	case reflect.Array, reflect.Slice:
 		if rv.Type().Elem().Kind() == reflect.Uint8 {
-			return e.encodeBytes(rv.Bytes())
+			return e.encodeString(string(rv.Bytes()))
 		} else if _, ok := rv.Interface().(Tuple); ok {
 			return e.encodeTuple(rv.Interface().(Tuple))
 		} else {
@@ -258,8 +269,41 @@ func (e *Encoder) encodeBool(b bool) error {
 	return err
 }
 
-func (e *Encoder) encodeBytes(byt []byte) error {
-	return e.encodeString(string(byt))
+func (e *Encoder) encodeBytes(byt Bytes) error {
+	l := len(byt)
+
+	// protocol >= 3  ->  BINBYTES*
+	if e.config.Protocol >= 3 {
+		if l < 256 {
+			err := e.emit(opShortBinbytes, byte(l))
+			if err != nil {
+				return err
+			}
+		} else {
+			var b = [1+4]byte{opBinbytes}
+
+			binary.LittleEndian.PutUint32(b[1:], uint32(l))
+			err := e.emitb(b[:])
+			if err != nil {
+				return err
+			}
+		}
+
+		return e.emits(string(byt))
+	}
+
+	// protocol 0..2 -> emit as `_codecs.encode(byt.decode('latin1'), 'latin1')`
+	// (as python3 does)
+	rlatin1 := make([]rune, len(byt))
+	for i := 0; i < l; i++ {
+		rlatin1[i] = rune(byt[i]) // decode as latin1
+	}
+	ulatin1 := unicode(rlatin1) // -> UTF8
+
+	return e.encodeCall(&Call{
+		Callable: Class{Module: "_codecs", Name: "encode"},
+		Args:     Tuple{ulatin1, "latin1"},
+	})
 }
 
 func (e *Encoder) encodeString(s string) error {
