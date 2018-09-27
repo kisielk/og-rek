@@ -126,6 +126,9 @@ type None struct{}
 // Tuple is a representation of Python's tuple.
 type Tuple []interface{}
 
+// Bytes represents Python's bytes.
+type Bytes string
+
 // Decoder is a decoder for pickle streams.
 type Decoder struct {
 	r      *bufio.Reader
@@ -285,6 +288,10 @@ loop:
 			err = d.loadSetItems()
 		case opBinfloat:
 			err = d.binFloat()
+		case opBinbytes:
+			err = d.loadBinBytes()
+		case opShortBinbytes:
+			err = d.loadShortBinBytes()
 		case opFrame:
 			err = d.loadFrame()
 		case opShortBinUnicode:
@@ -632,8 +639,41 @@ func (d *Decoder) reduce() error {
 	if !ok {
 		return fmt.Errorf("pickle: reduce: invalid class: %T", xclass)
 	}
-	d.push(Call{Callable: class, Args: args})
-	return nil
+
+	// try to handle the call.
+	// If the call is unknown - represent it symbolically with Call{...} .
+	err := d.handleCall(class, args)
+	if err == errCallNotHandled {
+		d.push(Call{Callable: class, Args: args})
+		err = nil
+	}
+
+	return err
+}
+
+// errCallNotHandled is internal error via which handleCall signals that it did
+// not handled the call.
+var errCallNotHandled = errors.New("handleCall: call not handled")
+
+// handleCall translates known python calls to appropriate Go objects.
+//
+// for example _codecs.encode(..., 'latin1') is handled as conversion to []byte.
+func (d *Decoder) handleCall(class Class, argv Tuple) error {
+	// for protocols <= 2 Python3 encodes bytes as `_codecs.encode(byt.decode('latin1'), 'latin1')`
+	if class.Module == "_codecs" && class.Name == "encode" &&
+		len(argv) == 2 && argv[1] == "latin1" {
+
+		// bytes as latin1-decoded unicode
+		data, err := decodeLatin1Bytes(argv[0])
+		if err != nil {
+			return fmt.Errorf("_codecs.encode: %s", err)
+		}
+
+		d.push(Bytes(data))
+		return nil
+	}
+
+	return errCallNotHandled
 }
 
 // Push a string
@@ -670,7 +710,9 @@ func (d *Decoder) loadString() error {
 	return nil
 }
 
-func (d *Decoder) loadBinString() error {
+// bufLoadBinBytes decodes `len(LE32) [len]data` into d.buf .
+// it serves loadBin{String,Bytes}.
+func (d *Decoder) bufLoadBinBytes() error {
 	var b [4]byte
 	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
@@ -689,11 +731,30 @@ func (d *Decoder) loadBinString() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (d *Decoder) loadBinString() error {
+	err := d.bufLoadBinBytes()
+	if err != nil {
+		return err
+	}
 	d.push(d.buf.String())
 	return nil
 }
 
-func (d *Decoder) loadShortBinString() error {
+func (d *Decoder) loadBinBytes() error {
+	err := d.bufLoadBinBytes()
+	if err != nil {
+		return err
+	}
+	d.push(Bytes(d.buf.Bytes()))
+	return nil
+}
+
+// bufLoadShortBinBytes decodes `len(U8) [len]data` into d.buf .
+// it serves loadShortBin{String,Bytes} .
+func (d *Decoder) bufLoadShortBinBytes() error {
 	b, err := d.r.ReadByte()
 	if err != nil {
 		return err
@@ -705,7 +766,24 @@ func (d *Decoder) loadShortBinString() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (d *Decoder) loadShortBinString() error {
+	err := d.bufLoadShortBinBytes()
+	if err != nil {
+		return err
+	}
 	d.push(d.buf.String())
+	return nil
+}
+
+func (d *Decoder) loadShortBinBytes() error {
+	err := d.bufLoadShortBinBytes()
+	if err != nil {
+		return err
+	}
+	d.push(Bytes(d.buf.Bytes()))
 	return nil
 }
 
@@ -1199,4 +1277,27 @@ func decodeLong(data string) (*big.Int, error) {
 		decoded.Neg(decoded)
 	}
 	return decoded, nil
+}
+
+// decodeLatin1Bytes tries to decode bytes from arg assuming it is latin1-encoded unicode.
+//
+// Python uses such representation of bytes for protocols <= 2 - where there is
+// no BYTES* opcodes.
+func decodeLatin1Bytes(arg interface{}) ([]byte, error) {
+	// bytes as latin1-decoded unicode
+	ulatin1, ok := arg.(string)
+	if !ok {
+		return nil, fmt.Errorf("latin1: arg must be string, not %T", arg)
+	}
+
+	data := make([]byte, 0, len(ulatin1))
+	for _, r := range ulatin1 {
+		if r >= 0x100 {
+			return nil, fmt.Errorf("latin1: cannot encode %q", r)
+		}
+
+		data = append(data, byte(r))
+	}
+
+	return data, nil
 }
