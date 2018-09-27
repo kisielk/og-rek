@@ -522,7 +522,7 @@ func testEncode(t *testing.T, proto int, object, objectDecodedBack interface{}, 
 	} else {
 		if !reflect.DeepEqual(v, objectDecodedBack) {
 			what := "identity"
-			if object != objectDecodedBack {
+			if !reflect.DeepEqual(object, objectDecodedBack) {
 				what = "expected object"
 			}
 			t.Errorf("encode -> decode != %s\nhave: %#v\nwant: %#v", what, v, objectDecodedBack)
