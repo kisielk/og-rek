@@ -50,6 +50,22 @@ func TestPyDecodeStringEscape(t *testing.T) {
 	})
 }
 
+func TestPyEncodeRawUnicodeEscape(t *testing.T) {
+	testCodec(t, func(in string) (string, error) {
+		return pyencodeRawUnicodeEscape(in), nil
+	}, []CodecTestCase{
+		{"\xc3\x28", "\xc3\x28"}, // invalid UTF-8
+		{"\x00\x01\x80\xfe\xffabc", "\x00\x01\x80\xfe\xffabc"},
+		{`\`, `\u005c`},
+		{"\n", `\u000a`},
+		{`"'`, `"'`},
+		{"hello\nмир", `hello\u000a\u043c\u0438\u0440`},
+		{"hello\nÐ¼Ð¸Ñ\u0080\x01", `hello\u000aмир`+"\x01"},
+		{"\u1234\U00004321", `\u1234\u4321`},
+		{"\U00012345", `\U00012345`},
+	})
+}
+
 func TestPyDecodeRawUnicodeEscape(t *testing.T) {
 	testCodec(t, pydecodeRawUnicodeEscape, []CodecTestCase{
 		{`hello`, "hello"},

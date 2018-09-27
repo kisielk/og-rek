@@ -6,6 +6,8 @@ import (
 	"unicode/utf8"
 )
 
+const hexdigits = "0123456789abcdef"
+
 // pyquote, similarly to strconv.Quote, quotes s with " but does not use "\u" and "\U" inside.
 //
 // We need to avoid \u and friends, since for regular strings Python translates
@@ -17,7 +19,6 @@ import (
 // Dumping strings in a way that is possible to copy/paste into Python and use
 // pickletools.dis and pickle.loads there to verify a pickle is also handy.
 func pyquote(s string) string {
-	const hexdigits = "0123456789abcdef"
 	out := make([]byte, 0, len(s))
 
 	for {
@@ -138,6 +139,57 @@ loop:
 	}
 
 	return string(out), nil
+}
+
+// pyencodeRawUnicodeEscape encodes input according to "raw-unicode-escape" Python codec..
+//
+// It is somewhat similar to escaping done by strconv.QuoteToASCII but uses
+// only "\u" and "\U", not e.g. \n or \xAA.
+//
+// This encoding - not Go quoting - must be used when emitting unicode text
+// for UNICODE opcode argument.
+//
+// Please see pydecodeRawUnicodeEscape for details on the codec.
+func pyencodeRawUnicodeEscape(s string) string {
+	out := make([]byte, 0, len(s))
+
+	for {
+		r, width := utf8.DecodeRuneInString(s)
+		if width == 0 {
+			break
+		}
+
+		switch {
+		// invalid UTF-8 -> emit byte as is
+		case r == utf8.RuneError:
+			out = append(out, s[0])
+
+		// not strictly needed for encoding to "raw-unicode-escape", but pickle does it
+		case r == '\\' || r == '\n':
+			out = append(out, `\u00`...)
+			out = append(out, hexdigits[r>>4], hexdigits[r&0xf])
+
+		case r >= 0x10000:
+			out = append(out, `\U`...)
+			for i := (8-1)*4; i >= 0; i -= 4 {
+				out = append(out, hexdigits[(r >> uint(i)) & 0xf])
+			}
+
+		case r >= 0x100:
+			out = append(out, `\u`...)
+			for i := (4-1)*4; i >= 0; i -= 4 {
+				out = append(out, hexdigits[(r >> uint(i)) & 0xf])
+			}
+
+		// rune <= 0xff -> emit via 1 raw byte
+		default:
+			out = append(out, byte(r))
+		}
+
+		s = s[width:]
+	}
+
+	return string(out)
 }
 
 // pydecodeRawUnicodeEscape decodes input according to "raw-unicode-escape" Python codec.

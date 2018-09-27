@@ -8,7 +8,6 @@ import (
 	"math"
 	"math/big"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -327,9 +326,7 @@ func (e *Encoder) encodeUnicode(s string) error {
 	}
 
 	// protocol 0: UNICODE
-	us := strconv.QuoteToASCII(s) // "hello\nмир" -> `"hello\n\u043c\u0438\u0440"`
-	us = us[1 : len(us)-1]        //              -> `hello\n\u043c\u0438\u0440`
-	return e.emitf("%c%s\n", opUnicode, us)
+	return e.emitf("%c%s\n", opUnicode, pyencodeRawUnicodeEscape(s))
 }
 
 func (e *Encoder) encodeFloat(f float64) error {
