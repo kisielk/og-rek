@@ -680,6 +680,32 @@ func (d *Decoder) handleCall(class Class, argv Tuple) error {
 		return nil
 	}
 
+	// handle bytearray(...) -> []byte(...)
+	if class == pybuiltin(d.protocol, "bytearray") {
+		// bytearray(bytes(...))
+		if len(argv) == 1 {
+			data, ok := argv[0].(Bytes)
+			if !ok {
+				return fmt.Errorf("bytearray: want (bytes,)  ; got (%T,)", argv[0])
+			}
+
+			d.push([]byte(data))
+			return nil
+		}
+
+		// bytearray(unicode, encoding)
+		if len(argv) == 2 && argv[1] == "latin-1" {
+			// bytes as latin1-decode unicode
+			data, err := decodeLatin1Bytes(argv[0])
+			if err != nil {
+				return fmt.Errorf("bytearray: %s", err)
+			}
+
+			d.push([]byte(data))
+			return nil
+		}
+	}
+
 	return errCallNotHandled
 }
 
@@ -1307,4 +1333,14 @@ func decodeLatin1Bytes(arg interface{}) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// pybuiltin returns Class corresponding to Python builtin name.
+func pybuiltin(protocol int, name string) Class {
+	module := "builtins" // py3
+	if protocol <= 2 {
+		module = "__builtin__" // py2
+	}
+
+	return Class{Module: module, Name: name}
 }

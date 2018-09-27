@@ -125,7 +125,7 @@ func (e *Encoder) encode(rv reflect.Value) error {
 		}
 	case reflect.Array, reflect.Slice:
 		if rv.Type().Elem().Kind() == reflect.Uint8 {
-			return e.encodeString(string(rv.Bytes()))
+			return e.encodeByteArray(rv.Bytes())
 		} else if _, ok := rv.Interface().(Tuple); ok {
 			return e.encodeTuple(rv.Interface().(Tuple))
 		} else {
@@ -303,6 +303,16 @@ func (e *Encoder) encodeBytes(byt Bytes) error {
 	return e.encodeCall(&Call{
 		Callable: Class{Module: "_codecs", Name: "encode"},
 		Args:     Tuple{ulatin1, "latin1"},
+	})
+}
+
+func (e *Encoder) encodeByteArray(bv []byte) error {
+	// TODO protocol <= 2: pickle can be shorter if we emit -> bytearray(unicode, encoding)
+	// instead of bytearray(_codecs.encode(unicode, encoding))
+
+	return e.encodeCall(&Call{
+		Callable: pybuiltin(e.config.Protocol, "bytearray"),
+		Args:     Tuple{Bytes(bv)},
 	})
 }
 
