@@ -1,6 +1,3 @@
-// Package ogórek is a library for decoding Python's pickle format.
-//
-// ogórek is Polish for "pickle".
 package ogórek
 
 import (
