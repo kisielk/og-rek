@@ -96,6 +96,12 @@ const (
 	opStackGlobal     byte = '\x93' // same as OpGlobal but using names on the stacks
 	opMemoize         byte = '\x94' // store top of the stack in memo
 	opFrame           byte = '\x95' // indicate the beginning of a new frame
+
+	// Protocol 5
+
+	opBytearray8     byte = '\x96' // push a Python bytearray object (len ule64; [len]data)
+	opNextBuffer     byte = '\x97' // push next out-of-band buffer
+	opReadOnlyBuffer byte = '\x98' // turn out-of-band buffer at stack top to be read-only
 )
 
 var errNotImplemented = errors.New("unimplemented opcode")
@@ -301,11 +307,17 @@ loop:
 			err = d.stackGlobal()
 		case opMemoize:
 			err = d.loadMemoize()
+		case opBytearray8:
+			err = d.loadBytearray8()
+		case opNextBuffer:
+			err = d.loadNextBuffer()
+		case opReadOnlyBuffer:
+			err = d.readOnlyBuffer()
 		case opProto:
 			var v byte
 			v, err = d.r.ReadByte()
-			if err == nil && !(0 <= v && v <= 4) {
-				// We support protocol opcodes for up to protocol 4.
+			if err == nil && !(0 <= v && v <= 5) {
+				// We support protocol opcodes for up to protocol 5.
 				//
 				// The PROTO opcode documentation says protocol version must be in [2, 256).
 				// However CPython also loads PROTO with version 0 and 1 without error.
@@ -740,24 +752,44 @@ func (d *Decoder) loadString() error {
 	return nil
 }
 
-// bufLoadBinBytes decodes `len(LE32) [len]data` into d.buf .
+// bufLoadBinData4 decodes `len(LE32) [len]data` into d.buf .
 // it serves loadBin{String,Bytes}.
-func (d *Decoder) bufLoadBinBytes() error {
+func (d *Decoder) bufLoadBinData4() error {
 	var b [4]byte
 	_, err := io.ReadFull(d.r, b[:])
 	if err != nil {
 		return err
 	}
 	v := binary.LittleEndian.Uint32(b[:])
+	return d.bufLoadBytesData(uint64(v))
+}
 
+// bufLoadBinData8 decodes `len(LE64) [len]data into d.buf .
+// it serves loadBytearray8 (and TODO loadBinBytes8, loadBinUnicode8)
+func (d *Decoder) bufLoadBinData8() error {
+	var b [8]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
+	}
+	v := binary.LittleEndian.Uint64(b[:])
+	return d.bufLoadBytesData(v)
+}
+
+// bufLoadBytesData fetches [lel]data into d.buf.
+// it serves bufloadBinBytes{4,8}
+func (d *Decoder) bufLoadBytesData(l uint64) error {
 	d.buf.Reset()
 	// don't allow malicious `BINSTRING <bigsize> nodata` to make us out of memory
-	prealloc := int(v)
+	prealloc := int(l)
 	if maxgrow := 0x10000; prealloc > maxgrow {
 		prealloc = maxgrow
 	}
 	d.buf.Grow(prealloc)
-	_, err = io.CopyN(&d.buf, d.r, int64(v))
+	if l > math.MaxInt64 {
+		return fmt.Errorf("size([]data) > maxint64")
+	}
+	_, err := io.CopyN(&d.buf, d.r, int64(l))
 	if err != nil {
 		return err
 	}
@@ -765,7 +797,7 @@ func (d *Decoder) bufLoadBinBytes() error {
 }
 
 func (d *Decoder) loadBinString() error {
-	err := d.bufLoadBinBytes()
+	err := d.bufLoadBinData4()
 	if err != nil {
 		return err
 	}
@@ -774,7 +806,7 @@ func (d *Decoder) loadBinString() error {
 }
 
 func (d *Decoder) loadBinBytes() error {
-	err := d.bufLoadBinBytes()
+	err := d.bufLoadBinData4()
 	if err != nil {
 		return err
 	}
@@ -1232,6 +1264,26 @@ func (d *Decoder) stackGlobal() error {
 
 func (d *Decoder) loadMemoize() error {
 	return d.memoTop(strconv.Itoa(len(d.memo)))
+}
+
+func (d *Decoder) loadBytearray8() error {
+	err := d.bufLoadBinData8()
+	if err != nil {
+		return err
+	}
+	d.push(d.buf.Bytes())
+	d.buf = bytes.Buffer{} // fully reset .buf to unalias just pushed []byte
+	return nil
+}
+
+func (d *Decoder) loadNextBuffer() error {
+	// TODO consider adding support for out-of-band data in the future
+	return fmt.Errorf("next_buffer: no out-of-band data")
+}
+
+func (d *Decoder) readOnlyBuffer() error {
+	// TODO consider adding support for out-of-band data in the future
+	return fmt.Errorf("read_only_buffer: stack top is not buffer")
 }
 
 // unquoteChar is like strconv.UnquoteChar, but returns io.ErrUnexpectedEOF

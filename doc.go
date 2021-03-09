@@ -54,7 +54,8 @@
 // version 2 is the highest protocol version that is understood by standard
 // pickle module of Python2. Protocol version 3 added ways to represent Python
 // bytes objects from Python3(~). Protocol version 4 further enhances on
-// version 3 and completely switches to binary-only encoding. Please see
+// version 3 and completely switches to binary-only encoding. Protocol
+// version 5 added support for out-of-band data(%). Please see
 // https://docs.python.org/3/library/pickle.html#data-stream-format for details.
 //
 // On decoding ogórek detects which protocol is being used and automatically
@@ -112,4 +113,6 @@
 //
 // (^) contrary to Python implementation, where malicious pickle can cause the
 // decoder to run arbitrary code, including e.g. os.system("rm -rf /").
+//
+// (%) ogórek currently does not support out-of-band data.
 package ogórek

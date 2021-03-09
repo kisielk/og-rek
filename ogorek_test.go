@@ -135,16 +135,18 @@ var (
 	P1 = PP(1)
 	P2 = PP(2)
 	P3 = PP(3)
+	P4 = PP(4)
 
 	P01   = PP(0,1)
 	P0123 = PP(0,1,2,3)
-	P0_   = PP(0,1,2,3,4)
+	P0_   = PP(0,1,2,3,4,5)
 	P12   = PP(  1,2)
-	P1_   = PP(  1,2,3,4)
+	P1_   = PP(  1,2,3,4,5)
 	P23   = PP(    2,3)
-	P2_   = PP(    2,3,4)
-	P3_   = PP(      3,4)
-	P4_   = PP(        4)
+	P2_   = PP(    2,3,4,5)
+	P3_   = PP(      3,4,5)
+	P4_   = PP(        4,5)
+	P5_   = PP(          5)
 )
 
 // make sure we use test pickles in fuzz corpus
@@ -307,7 +309,10 @@ var tests = []TestEntry{
 		P3("\x80\xffcbuiltins\nbytearray\nC\rhello\nмир\x01\x85R."),
 
 		// PROTO + SHORT_BINUNICODE + STACK_GLOBAL + SHORT_BINBYTES + TUPLE1 + REDUCE
-		P4_("\x80\xff\x8c\x08builtins\x8c\tbytearray\x93C\rhello\nмир\x01\x85R."),
+		P4("\x80\xff\x8c\x08builtins\x8c\tbytearray\x93C\rhello\nмир\x01\x85R."),
+
+		// PROTO + BYTEARRAY8
+		P5_("\x80\xff\x96\x0d\x00\x00\x00\x00\x00\x00\x00hello\nмир\x01."),
 
 		// bytearray(text, encoding); GLOBAL + BINUNICODE + TUPLE + REDUCE
 		I("c__builtin__\nbytearray\nq\x00(X\x13\x00\x00\x00hello\n\xc3\x90\xc2\xbc\xc3\x90\xc2\xb8\xc3\x91\xc2\x80\x01q\x01X\x07\x00\x00\x00latin-1q\x02tq\x03Rq\x04.")),
@@ -701,6 +706,10 @@ func TestDecodeError(t *testing.T) {
 		// \r\n should not be read as combind EOL - only \n is
 		"L123L\r\n.",
 		"S'abc'\r\n.",
+
+		// out-of-band data  (TODO might consider to add support for it in the future)
+		"\x97.", // NEXT_BUFFER
+		"\x98.", // READONLY_BUFFER
 	}
 	for _, tt := range testv {
 		buf := bytes.NewBufferString(tt)

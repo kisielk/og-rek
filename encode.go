@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const highestProtocol = 4 // highest protocol version we support generating
+const highestProtocol = 5 // highest protocol version we support generating
 
 // unicode is string that always encodes as unicode pickle object.
 // (regular string encodes to unicode pickle object only for protocol >= 3)
@@ -307,6 +307,18 @@ func (e *Encoder) encodeBytes(byt Bytes) error {
 }
 
 func (e *Encoder) encodeByteArray(bv []byte) error {
+	// protocol >= 5  ->  BYTEARRAY8
+	if e.config.Protocol >= 5 {
+		var b = [1+8]byte{opBytearray8}
+
+		binary.LittleEndian.PutUint64(b[1:], uint64(len(bv)))
+		err := e.emitb(b[:])
+		if err != nil {
+			return err
+		}
+		return e.emitb(bv)
+	}
+
 	// TODO protocol <= 2: pickle can be shorter if we emit -> bytearray(unicode, encoding)
 	// instead of bytearray(_codecs.encode(unicode, encoding))
 
