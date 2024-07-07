@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron:  '0 12 * * *' # Every day noon UTC
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        go:
+          - "1.7.x"
+          - "1.8.x"
+          - "1.9.x"
+          - "1.11.x"
+          - "1.12.x"
+          - "1.13.x"
+          - "1.14.x"
+          - "1.15.x"
+      # Don't cancel everything when one Go version fails
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install Go ${{ matrix.go }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Make "git describe" work
+
+    - run: go test
