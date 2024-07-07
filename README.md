@@ -1,7 +1,7 @@
 ogórek
 ======
 [![GoDoc](https://godoc.org/github.com/kisielk/og-rek?status.svg)](https://godoc.org/github.com/kisielk/og-rek)
-[![Build Status](https://travis-ci.org/kisielk/og-rek.svg?branch=master)](https://travis-ci.org/kisielk/og-rek)
+[![Build Status](https://github.com/kisielk/og-rek/actions/workflows/ci.yml/badge.svg)](https://github.com/kisielk/og-rek/actions/workflows/ci.yml)
 
 ogórek is a Go library for encoding and decoding pickles.
 
