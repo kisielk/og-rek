@@ -781,11 +781,12 @@ func (d *Decoder) bufLoadBinData8() error {
 func (d *Decoder) bufLoadBytesData(l uint64) error {
 	d.buf.Reset()
 	// don't allow malicious `BINSTRING <bigsize> nodata` to make us out of memory
-	prealloc := int(l)
-	if maxgrow := 0x10000; prealloc > maxgrow {
+	prealloc := l
+	const maxgrow = 0x10000
+	if prealloc > maxgrow {
 		prealloc = maxgrow
 	}
-	d.buf.Grow(prealloc)
+	d.buf.Grow(int(prealloc))
 	if l > math.MaxInt64 {
 		return fmt.Errorf("size([]data) > maxint64")
 	}
