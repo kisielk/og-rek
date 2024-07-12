@@ -141,6 +141,7 @@ var (
 	P0123 = PP(0,1,2,3)
 	P0_   = PP(0,1,2,3,4,5)
 	P12   = PP(  1,2)
+	P123  = PP(  1,2,3)
 	P1_   = PP(  1,2,3,4,5)
 	P23   = PP(    2,3)
 	P2_   = PP(    2,3,4,5)
@@ -264,6 +265,12 @@ var tests = []TestEntry{
 		P4_("\x8c\x32' \xe7\x9f\xa5\xe4\xba\x8b\xe5\xb0\x91\xe6\x97\xb6\xe7\x83\xa6\xe6\x81\xbc\xe5\xb0\x91\xe3\x80\x81\xe8\xaf\x86\xe4\xba\xba\xe5\xa4\x9a\xe5\xa4\x84\xe6\x98\xaf\xe9\x9d\x9e\xe5\xa4\x9a\xe3\x80\x82.")),
 
 		// TODO BINUNICODE8
+
+	// NOTE loosy because *UNICODE currently decodes as string
+	Xloosy("unicode(non-utf8)", unicode("\x93"), "\x93",
+		P0(errP0UnicodeUTF8Only),       // UNICODE cannot represent non-UTF8 sequences
+		P123("X\x01\x00\x00\x00\x93."), // BINUNICODE
+		P4_("\x8c\x01\x93.")),          // SHORT_BINUNICODE
 
 	// str/unicode with many control characters at P0
 	// this exercises escape-based STRING/UNICODE coding
