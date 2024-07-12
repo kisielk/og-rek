@@ -132,6 +132,16 @@ type Tuple []interface{}
 // Bytes represents Python's bytes.
 type Bytes string
 
+// make Bytes and unicode to be represented by %#v distinctly from string
+// (without GoString %#v emits just "..." for all string, Bytes and unicode)
+func (v Bytes) GoString() string {
+	return fmt.Sprintf("%T(%#v)", v, string(v))
+}
+func (v unicode) GoString() string {
+	return fmt.Sprintf("%T(%#v)", v, string(v))
+}
+
+
 // Decoder is a decoder for pickle streams.
 type Decoder struct {
 	r      *bufio.Reader

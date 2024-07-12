@@ -957,6 +957,24 @@ func TestUnquoteCharEOF(t *testing.T) {
 	}
 }
 
+func TestStringsFmt(t *testing.T) {
+	tvhash := []struct{
+		in      interface{}
+		vhashok string
+	}{
+		{"мир",          `"мир"`},
+		{Bytes("мир"),   `ogórek.Bytes("мир")`},
+		{unicode("мир"), `ogórek.unicode("мир")`},
+	}
+
+	for _, tt := range tvhash {
+		vhash := fmt.Sprintf("%#v", tt.in)
+		if vhash != tt.vhashok {
+			t.Errorf("%T %q: %%#v:\nhave: %s\nwant: %s", tt.in, tt.in, vhash, tt.vhashok)
+		}
+	}
+}
+
 // like io.LimitedReader but for writes
 // XXX it would be good to have it in stdlib
 type LimitedWriter struct {
