@@ -38,6 +38,10 @@ func Fuzz(data []byte) int {
 				// we cannot encode non-string Ref at proto=0
 				continue
 
+			case proto == 0 && err == errP0UnicodeUTF8Only:
+				// we cannot encode non-UTF8 Unicode at proto=0
+				continue
+
 			case proto <= 3 && err == errP0123GlobalStringLineOnly:
 				// we cannot encode Class (GLOBAL opcode) with \n at proto <= 4
 				continue

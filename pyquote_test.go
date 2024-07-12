@@ -6,22 +6,23 @@ import (
 
 // CodecTestCase represents 1 test case of a coder or decoder.
 //
-// Under the given transformation function in must be transformed to out.
+// Under the given transformation function in must be transformed to outOK.
 type CodecTestCase struct {
-	in, out string
+	in    string
+	outOK interface{} // string | error
 }
 
 // testCodec tests transform func applied to all test cases from testv.
 func testCodec(t *testing.T, transform func(in string)(string, error), testv []CodecTestCase) {
 	for _, tt := range testv {
 		s, err := transform(tt.in)
+		var out interface{} = s
 		if err != nil {
-			t.Errorf("%q -> error: %s", tt.in, err)
-			continue
+			out = err
 		}
 
-		if s != tt.out {
-			t.Errorf("%q -> unexpected:\nhave: %q\nwant: %q", tt.in, s, tt.out)
+		if out != tt.outOK {
+			t.Errorf("%q -> unexpected:\nhave: %#v\nwant: %#v", tt.in, out, tt.outOK)
 		}
 	}
 }
@@ -51,11 +52,10 @@ func TestPyDecodeStringEscape(t *testing.T) {
 }
 
 func TestPyEncodeRawUnicodeEscape(t *testing.T) {
-	testCodec(t, func(in string) (string, error) {
-		return pyencodeRawUnicodeEscape(in), nil
-	}, []CodecTestCase{
-		{"\xc3\x28", "\xc3\x28"}, // invalid UTF-8
-		{"\x00\x01\x80\xfe\xffabc", "\x00\x01\x80\xfe\xffabc"},
+	testCodec(t, pyencodeRawUnicodeEscape, []CodecTestCase{
+		{"\x93", errPyRawUnicodeEscapeInvalidUTF8},     // invalid UTF-8
+		{"\xc3\x28", errPyRawUnicodeEscapeInvalidUTF8}, // invalid UTF-8
+		{"\x00\x01abc", "\x00\x01abc"},
 		{`\`, `\u005c`},
 		{"\n", `\u000a`},
 		{`"'`, `"'`},
@@ -63,6 +63,7 @@ func TestPyEncodeRawUnicodeEscape(t *testing.T) {
 		{"hello\nÐ¼Ð¸Ñ\u0080\x01", `hello\u000aмир`+"\x01"},
 		{"\u1234\U00004321", `\u1234\u4321`},
 		{"\U00012345", `\U00012345`},
+		{"\u007f\u0080\u0093\u00ff", "\x7f\x80\x93\xff"},
 	})
 }
 

@@ -366,6 +366,8 @@ func (e *Encoder) encodeString(s string) error {
 	return e.emitf("%c%s\n", opString, pyquote(s))
 }
 
+var errP0UnicodeUTF8Only = errors.New(`protocol 0: unicode: raw-unicode-escape cannot represent invalid UTF-8`)
+
 // encodeUnicode emits UTF-8 encoded string s as unicode pickle object.
 func (e *Encoder) encodeUnicode(s string) error {
 	// protocol >= 1  -> BINUNICODE*
@@ -392,7 +394,14 @@ func (e *Encoder) encodeUnicode(s string) error {
 	}
 
 	// protocol 0: UNICODE
-	return e.emitf("%c%s\n", opUnicode, pyencodeRawUnicodeEscape(s))
+	uesc, err := pyencodeRawUnicodeEscape(s)
+	if err != nil {
+		if err != errPyRawUnicodeEscapeInvalidUTF8 {
+			panic(err) // errPyRawUnicodeEscapeInvalidUTF8 is the only possible error
+		}
+		return errP0UnicodeUTF8Only
+	}
+	return e.emitf("%c%s\n", opUnicode, uesc)
 }
 
 func (e *Encoder) encodeFloat(f float64) error {

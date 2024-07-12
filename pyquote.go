@@ -1,6 +1,7 @@
 package ogórek
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"unicode/utf8"
@@ -141,7 +142,10 @@ loop:
 	return string(out), nil
 }
 
-// pyencodeRawUnicodeEscape encodes input according to "raw-unicode-escape" Python codec..
+// errPyRawUnicodeEscapeInvalidUTF8 is returned by pyencodeRawUnicodeEscape on invalid UTF-8 input.
+var errPyRawUnicodeEscapeInvalidUTF8 = errors.New("pyencodeRawUnicodeEscape: invalid UTF-8")
+
+// pyencodeRawUnicodeEscape encodes input according to "raw-unicode-escape" Python codec.
 //
 // It is somewhat similar to escaping done by strconv.QuoteToASCII but uses
 // only "\u" and "\U", not e.g. \n or \xAA.
@@ -149,8 +153,13 @@ loop:
 // This encoding - not Go quoting - must be used when emitting unicode text
 // for UNICODE opcode argument.
 //
+// Since \xAA is not allowed to be present in the output stream it is not
+// possible to encode invalid UTF-8 input - errPyRawUnicodeEscapeInvalidUTF8 is
+// returned in such case. Otherwise the encoding always succeeds and
+// errPyRawUnicodeEscapeInvalidUTF8 is the only possible returned error.
+//
 // Please see pydecodeRawUnicodeEscape for details on the codec.
-func pyencodeRawUnicodeEscape(s string) string {
+func pyencodeRawUnicodeEscape(s string) (string, error) {
 	out := make([]byte, 0, len(s))
 
 	for {
@@ -160,9 +169,9 @@ func pyencodeRawUnicodeEscape(s string) string {
 		}
 
 		switch {
-		// invalid UTF-8 -> emit byte as is
+		// invalid UTF-8 -> cannot encode
 		case r == utf8.RuneError:
-			out = append(out, s[0])
+			return "", errPyRawUnicodeEscapeInvalidUTF8
 
 		// not strictly needed for encoding to "raw-unicode-escape", but pickle does it
 		case r == '\\' || r == '\n':
@@ -189,7 +198,7 @@ func pyencodeRawUnicodeEscape(s string) string {
 		s = s[width:]
 	}
 
-	return string(out)
+	return string(out), nil
 }
 
 // pydecodeRawUnicodeEscape decodes input according to "raw-unicode-escape" Python codec.
