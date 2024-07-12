@@ -3,6 +3,7 @@
 package ogórek
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,16 +16,14 @@ import (
 //
 // It is triggered to be run by go:generate from ogorek_test.go .
 func TestFuzzGenerate(t *testing.T) {
-	for i, test := range tests {
-		j := 0
+	for _, test := range tests {
 		for _, pickle := range test.picklev {
 			if pickle.err != nil {
 				continue
 			}
-			j++
 
 			err := ioutil.WriteFile(
-				fmt.Sprintf("fuzz/corpus/test-%d-%d.pickle", i, j),
+				fmt.Sprintf("fuzz/corpus/test-%x.pickle", sha1.Sum([]byte(pickle.data))),
 				[]byte(pickle.data), 0666)
 			if err != nil {
 				log.Fatal(err)
