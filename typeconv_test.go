@@ -52,3 +52,62 @@ func TestAsInt64(t *testing.T) {
 	}
 
 }
+
+func TestAsBytesString(t *testing.T) {
+	Ebytes := func(x interface{}) error {
+		return fmt.Errorf("expect bytes|bytestr; got %T", x)
+	}
+	Estring := func(x interface{}) error {
+		return fmt.Errorf("expect unicode|bytestr; got %T", x)
+	}
+
+	const y = true
+	const n = false
+
+	testv := []struct {
+		in  interface{}
+		bok bool // AsBytes  succeeds
+		sok bool // AsString succeeds
+	}{
+		{"мир",             n, y},
+		{Bytes("мир"),      y, n},
+		{ByteString("мир"), y, y},
+		{1.0,               n, n},
+		{None{},            n, n},
+	}
+
+	for _, tt := range testv {
+		bout, berr := AsBytes(tt.in)
+		sout, serr := AsString(tt.in)
+
+		sin := ""
+		xin := reflect.ValueOf(tt.in)
+		if xin.Kind() == reflect.String {
+			sin = xin.String()
+		}
+
+		boutOK := Bytes(sin)
+		var berrOK error
+		if !tt.bok {
+			boutOK = ""
+			berrOK = Ebytes(tt.in)
+		}
+
+		soutOK := sin
+		var serrOK error
+		if !tt.sok {
+			soutOK = ""
+			serrOK = Estring(tt.in)
+		}
+
+		if !(bout == boutOK && reflect.DeepEqual(berr, berrOK)) {
+			t.Errorf("%#v: AsBytes:\nhave %#v %#v\nwant %#v %#v",
+				tt.in, bout, berr, boutOK, berrOK)
+		}
+
+		if !(sout == soutOK && reflect.DeepEqual(serr, serrOK)) {
+			t.Errorf("%#v: AsString:\nhave %#v %#v\nwant %#v %#v",
+				tt.in, sout, serr, soutOK, serrOK)
+		}
+	}
+}

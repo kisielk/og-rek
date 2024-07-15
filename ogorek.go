@@ -132,9 +132,17 @@ type Tuple []interface{}
 // Bytes represents Python's bytes.
 type Bytes string
 
-// make Bytes and unicode to be represented by %#v distinctly from string
+// ByteString represents str from Python2 in StrictUnicode mode.
+//
+// See StrictUnicode mode documentation in top-level package overview for details.
+type ByteString string
+
+// make Bytes, ByteString and unicode to be represented by %#v distinctly from string
 // (without GoString %#v emits just "..." for all string, Bytes and unicode)
 func (v Bytes) GoString() string {
+	return fmt.Sprintf("%T(%#v)", v, string(v))
+}
+func (v ByteString) GoString() string {
 	return fmt.Sprintf("%T(%#v)", v, string(v))
 }
 func (v unicode) GoString() string {
@@ -175,6 +183,12 @@ type DecoderConfig struct {
 	//
 	// See Ref documentation for more details.
 	PersistentLoad func(ref Ref) (interface{}, error)
+
+	// StrictUnicode, when true, requests to decode to Go string only
+	// Python unicode objects. Python2 bytestrings (py2 str type) are
+	// decoded into ByteString in this mode. See StrictUnicode mode
+	// documentation in top-level package overview for details.
+	StrictUnicode bool
 }
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
@@ -687,7 +701,7 @@ var errCallNotHandled = errors.New("handleCall: call not handled")
 func (d *Decoder) handleCall(class Class, argv Tuple) error {
 	// for protocols <= 2 Python3 encodes bytes as `_codecs.encode(byt.decode('latin1'), 'latin1')`
 	if class.Module == "_codecs" && class.Name == "encode" &&
-		len(argv) == 2 && argv[1] == "latin1" {
+		len(argv) == 2 && stringEQ(argv[1], "latin1") {
 
 		// bytes as latin1-decoded unicode
 		data, err := decodeLatin1Bytes(argv[0])
@@ -713,7 +727,7 @@ func (d *Decoder) handleCall(class Class, argv Tuple) error {
 		}
 
 		// bytearray(unicode, encoding)
-		if len(argv) == 2 && argv[1] == "latin-1" {
+		if len(argv) == 2 && stringEQ(argv[1], "latin-1") {
 			// bytes as latin1-decode unicode
 			data, err := decodeLatin1Bytes(argv[0])
 			if err != nil {
@@ -726,6 +740,15 @@ func (d *Decoder) handleCall(class Class, argv Tuple) error {
 	}
 
 	return errCallNotHandled
+}
+
+// pushByteString pushes str as either ByteString or string depending on StrictUnicode setting.
+func (d *Decoder) pushByteString(str string) {
+	if d.config.StrictUnicode {
+		d.push(ByteString(str))
+	} else {
+		d.push(str)
+	}
 }
 
 // Push a string
@@ -758,7 +781,7 @@ func (d *Decoder) loadString() error {
 		return err
 	}
 
-	d.push(s)
+	d.pushByteString(s)
 	return nil
 }
 
@@ -812,7 +835,7 @@ func (d *Decoder) loadBinString() error {
 	if err != nil {
 		return err
 	}
-	d.push(d.buf.String())
+	d.pushByteString(d.buf.String())
 	return nil
 }
 
@@ -847,7 +870,7 @@ func (d *Decoder) loadShortBinString() error {
 	if err != nil {
 		return err
 	}
-	d.push(d.buf.String())
+	d.pushByteString(d.buf.String())
 	return nil
 }
 

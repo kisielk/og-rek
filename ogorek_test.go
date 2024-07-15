@@ -83,6 +83,9 @@ type TestEntry struct {
 	objectIn  interface{}
 	picklev   []TestPickle
 	objectOut interface{}
+
+	strictUnicodeN bool // whether to test with StrictUnicode=n while decoding/encoding
+	strictUnicodeY bool // whether to test with StrictUnicode=y while decoding/encoding
 }
 
 // X, I, P0, P1, P* form a language to describe decode/encode tests:
@@ -98,8 +101,25 @@ type TestEntry struct {
 //   Decoding the pickle data must give the object.
 
 // X is syntatic sugar to prepare one TestEntry.
+//
+// the entry is tested under both StrictUnicode=n and StrictUnicode=y modes.
 func X(name string, object interface{}, picklev ...TestPickle) TestEntry {
-	return TestEntry{name: name, objectIn: object, objectOut: object, picklev: picklev}
+	return TestEntry{name: name, objectIn: object, objectOut: object, picklev: picklev,
+			 strictUnicodeN: true, strictUnicodeY: true}
+}
+
+// Xuauto is syntactic sugar to prepare one TestEntry that is tested only under StrictUnicode=n mode.
+func Xuauto(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.strictUnicodeY = false
+	return x
+}
+
+// Xustrict is syntactic sugar to prepare one TestEntry that is tested only under StrictUnicode=y mode.
+func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.strictUnicodeN = false
+	return x
 }
 
 // Xloosy is syntatic sugar to prepare one TestEntry with loosy incoding.
@@ -235,7 +255,9 @@ var tests = []TestEntry{
 		P2_("(K\x01K\x02K\x03\x88l."), // MARK + BININT1 + NEW_TRUE + LIST
 		I("(lp0\nI1\naI2\naI3\naI01\na.")),
 
-	X("str('abc')", "abc",
+	// strings in default StrictUnicode=n mode
+
+	Xuauto("str('abc')", "abc",
 		P0("S\"abc\"\n."),           // STRING
 		P12("U\x03abc."),            // SHORT_BINSTRING
 		P3("X\x03\x00\x00\x00abc."), // BINUNICODE
@@ -244,7 +266,7 @@ var tests = []TestEntry{
 		I("S'abc'\np0\n."),
 		I("S'abc'\n.")),
 
-	X("unicode('日本語')", "日本語",
+	Xuauto("unicode('日本語')", "日本語",
 		P0("S\"日本語\"\n."),                                 // STRING
 		P12("U\x09日本語."),                                  // SHORT_BINSTRING
 		P3("X\x09\x00\x00\x00日本語."),                       // BINUNICODE
@@ -254,7 +276,7 @@ var tests = []TestEntry{
 		I("X\x09\x00\x00\x00\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e.")), // BINUNICODE
 		// TODO BINUNICODE8
 
-	X("unicode('\\' 知事少时烦恼少、识人多处是非多。')", "' 知事少时烦恼少、识人多处是非多。",
+	Xuauto("unicode('\\' 知事少时烦恼少、识人多处是非多。')", "' 知事少时烦恼少、识人多处是非多。",
 		// UNICODE
 		I("V' \\u77e5\\u4e8b\\u5c11\\u65f6\\u70e6\\u607c\\u5c11\\u3001\\u8bc6\\u4eba\\u591a\\u5904\\u662f\\u975e\\u591a\\u3002\n."),
 
@@ -266,8 +288,35 @@ var tests = []TestEntry{
 
 		// TODO BINUNICODE8
 
-	// NOTE loosy because *UNICODE currently decodes as string
-	Xloosy("unicode(non-utf8)", unicode("\x93"), "\x93",
+	// strings in StrictUnicode=y mode
+
+	Xustrict("str('abc')", ByteString("abc"),
+		P0("S\"abc\"\n."),           // STRING
+		P1_("U\x03abc."),            // SHORT_BINSTRING
+		I("T\x03\x00\x00\x00abc."),  // BINSTRING
+		I("S'abc'\np0\n."),
+		I("S'abc'\n.")),
+
+	Xustrict("unicode('abc')", "abc",
+		P0("Vabc\n."),                 // UNICODE
+		P123("X\x03\x00\x00\x00abc."), // BINUNICODE
+		P4_("\x8c\x03abc.")),          // SHORT_BINUNICODE
+		// TODO BINUNICODE8
+
+	Xustrict("str('日本語')", ByteString("日本語"),
+		P0("S\"日本語\"\n."), // STRING
+		P1_("U\x09日本語.")), // SHORT_BINSTRING
+
+	Xustrict("unicode('日本語')", "日本語",
+		P0("V\\u65e5\\u672c\\u8a9e\n."),                      // UNICODE
+		P123("X\x09\x00\x00\x00日本語."),                     // BINUNICODE
+		P4_("\x8c\x09\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e."), // SHORT_BINUNICODE
+
+		I("V\\u65e5\\u672c\\u8a9e\np0\n."),                           // UNICODE
+		I("X\x09\x00\x00\x00\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e.")), // BINUNICODE
+		// TODO BINUNICODE8
+
+	Xustrict("unicode(non-utf8)", "\x93",
 		P0(errP0UnicodeUTF8Only),       // UNICODE cannot represent non-UTF8 sequences
 		P123("X\x01\x00\x00\x00\x93."), // BINUNICODE
 		P4_("\x8c\x01\x93.")),          // SHORT_BINUNICODE
@@ -275,15 +324,15 @@ var tests = []TestEntry{
 	// str/unicode with many control characters at P0
 	// this exercises escape-based STRING/UNICODE coding
 
-	X(`str('\x80ми\nр\r\u2028\\u1234\\U00004321') # text escape`, "\x80ми\nр\r\u2028\\u1234\\U00004321",
+	Xustrict(`str('\x80ми\nр\r\u2028\\u1234\\U00004321') # text escape`, ByteString("\x80ми\nр\r\u2028\\u1234\\U00004321"),
 		P0("S\"\\x80ми\\nр\\r\\xe2\\x80\\xa8\\\\u1234\\\\U00004321\"\n."),
 		I("S\"\\x80ми\\nр\\r\\xe2\\x80\\xa8\\u1234\\U00004321\"\n.")), // \u and \U not decoded
 
-	X(`str("hel'lo")`, "hel'lo", I("S'hel'lo'\n.")),      // non-escaped ' inside '-quotes
-	X(`str("hel\"lo")`, "hel\"lo", I("S\"hel\"lo\"\n.")), // non-escaped " inside "-quotes
+	Xustrict(`str("hel'lo")`, ByteString("hel'lo"), I("S'hel'lo'\n.")),      // non-escaped ' inside '-quotes
+	Xustrict(`str("hel\"lo")`, ByteString("hel\"lo"), I("S\"hel\"lo\"\n.")), // non-escaped " inside "-quotes
 
 
-	X(`unicode(r'мир\n\r\x00'+'\r') # text escape`, `мир\n\r\x00`+"\r",
+	Xuauto(`unicode(r'мир\n\r\x00'+'\r') # text escape`, `мир\n\r\x00`+"\r",
 		I("V\\u043c\\u0438\\u0440\\n\\r\\x00" + // only \u and \U are decoded - not \n \r ...
 			"\r" +                          // raw \r - ok, not lost
 			"\n.")),
@@ -330,13 +379,13 @@ var tests = []TestEntry{
 		P1_("}."), // EMPTY_DICT
 		I("(dp0\n.")),
 
-	X("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
+	Xuauto("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
 		P0("(S\"a\"\nS\"1\"\nd."),                     // MARK + STRING + DICT
 		P12("(U\x01aU\x011d."),                        // MARK + SHORT_BINSTRING + DICT
 		P3("(X\x01\x00\x00\x00aX\x01\x00\x00\x001d."), // MARK + BINUNICODE + DICT
 		P4_("(\x8c\x01a\x8c\x011d.")),                 // MARK + SHORT_BINUNICODE + DICT
 
-	X("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
+	Xuauto("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
 		// map iteration order is not stable - test only decoding
 		I("(S\"a\"\nS\"1\"\nS\"b\"\nS\"2\"\nd."), // P0: MARK + STRING + DICT
 		I("(U\x01aU\x011U\x01bU\x012d."),         // P12: MARK + SHORT_BINSTRING + DICT
@@ -349,7 +398,7 @@ var tests = []TestEntry{
 		I("}(U\x01aU\x011U\x01bU\x012u."),            // EMPTY_DICT + MARK + SHORT_BINSTRING + SETITEMS
 		I("(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.")),
 
-	X("foo.bar  # global", Class{Module: "foo", Name: "bar"},
+	Xuauto("foo.bar  # global", Class{Module: "foo", Name: "bar"},
 		P0123("cfoo\nbar\n."),              // GLOBAL
 		P4_("\x8c\x03foo\x8c\x03bar\x93."), // SHORT_BINUNICODE + STACK_GLOBAL
 		I("S'foo'\nS'bar'\n\x93.")),        // STRING + STACK_GLOBAL
@@ -358,20 +407,20 @@ var tests = []TestEntry{
 		P0123(errP0123GlobalStringLineOnly),
 		P4_("\x8c\x05foo\n2\x8c\x03bar\x93.")), // SHORT_BINUNICODE + STACK_GLOBAL
 
-	X(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}},
+	Xuauto(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}},
 		P0("cfoo\nbar\n(S\"bing\"\ntR."),                     // GLOBAL + MARK + STRING + TUPLE + REDUCE
 		P1("cfoo\nbar\n(U\x04bingtR."),                       // GLOBAL + MARK + SHORT_BINSTRING + TUPLE + REDUCE
 		P2("cfoo\nbar\nU\x04bing\x85R."),                     // GLOBAL + SHORT_BINSTRING + TUPLE1 + REDUCE
 		P3("cfoo\nbar\nX\x04\x00\x00\x00bing\x85R."),         // GLOBAL + BINUNICODE + TUPLE1 + REDUCE
 		P4_("\x8c\x03foo\x8c\x03bar\x93\x8c\x04bing\x85R.")), // SHORT_BINUNICODE + STACK_GLOBAL + TUPLE1 + REDUCE
 
-	X(`persref("abc")`, Ref{"abc"},
+	Xuauto(`persref("abc")`, Ref{"abc"},
 		P0("Pabc\n."),                // PERSID
 		P12("U\x03abcQ."),            // SHORT_BINSTRING + BINPERSID
 		P3("X\x03\x00\x00\x00abcQ."), // BINUNICODE + BINPERSID
 		P4_("\x8c\x03abcQ.")),        // SHORT_BINUNICODE + BINPERSID
 
-	X(`persref("abc\nd")`, Ref{"abc\nd"},
+	Xuauto(`persref("abc\nd")`, Ref{"abc\nd"},
 		P0(errP0PersIDStringLineOnly),   // cannot be encoded
 		P12("U\x05abc\ndQ."),            // SHORT_BINSTRING + BINPERSID
 		P3("X\x05\x00\x00\x00abc\ndQ."), // BINUNICODE + BINPERSID
@@ -388,10 +437,10 @@ var tests = []TestEntry{
 	X("LONG_BINPUT", []interface{}{int64(17)},
 		I("(lr0000I17\na.")),
 
-	X("graphite message1", graphiteObject1, graphitePickle1),
-	X("graphite message2", graphiteObject2, graphitePickle2),
-	X("graphite message3", graphiteObject3, graphitePickle3),
-	X("too long line", longLine, I("V" + longLine + "\n.")),
+	Xuauto("graphite message1", graphiteObject1, graphitePickle1),
+	Xuauto("graphite message2", graphiteObject2, graphitePickle2),
+	Xuauto("graphite message3", graphiteObject3, graphitePickle3),
+	Xuauto("too long line", longLine, I("V" + longLine + "\n.")),
 
 	// opcodes from protocol 4
 
@@ -430,26 +479,36 @@ var protoPrefixTemplate = string([]byte{opProto, 0xff})
 // TestDecode verifies ogórek decoder.
 func TestDecode(t *testing.T) {
 	for _, test := range tests {
-		for _, pickle := range test.picklev {
-			if pickle.err != nil {
+		for _, strictUnicode := range []bool{false, true} {
+			if  strictUnicode && !test.strictUnicodeY {
 				continue
 			}
+			if !strictUnicode && !test.strictUnicodeN {
+				continue
+			}
+			testname := fmt.Sprintf("%s/StrictUnicode=%s", test.name, yn(strictUnicode))
 
-			if strings.HasPrefix(pickle.data, protoPrefixTemplate) {
-				// test case asked to have concrete `PROTO ver` prefix.
-				// let's range over all pickle's protocols.
-				for _, proto := range pickle.protov {
-					data := string([]byte{opProto, byte(proto)}) +
-						pickle.data[len(protoPrefixTemplate):]
+			for _, pickle := range test.picklev {
+				if pickle.err != nil {
+					continue
+				}
 
-					t.Run(fmt.Sprintf("%s/%q/proto=%d", test.name, data, proto), func(t *testing.T) {
-						testDecode(t, test.objectOut, data)
+				if strings.HasPrefix(pickle.data, protoPrefixTemplate) {
+					// test case asked to have concrete `PROTO ver` prefix.
+					// let's range over all pickle's protocols.
+					for _, proto := range pickle.protov {
+						data := string([]byte{opProto, byte(proto)}) +
+							pickle.data[len(protoPrefixTemplate):]
+
+						t.Run(fmt.Sprintf("%s/%q/proto=%d", testname, data, proto), func(t *testing.T) {
+							testDecode(t, strictUnicode, test.objectOut, data)
+						})
+					}
+				} else {
+					t.Run(fmt.Sprintf("%s/%q", testname, pickle.data), func(t *testing.T) {
+						testDecode(t, strictUnicode, test.objectOut, pickle.data)
 					})
 				}
-			} else {
-				t.Run(fmt.Sprintf("%s/%q", test.name, pickle.data), func(t *testing.T) {
-					testDecode(t, test.objectOut, pickle.data)
-				})
 			}
 		}
 	}
@@ -458,32 +517,42 @@ func TestDecode(t *testing.T) {
 // TestEncode verifies ogórek encoder.
 func TestEncode(t *testing.T) {
 	for _, test := range tests {
-		alreadyTested := make(map[int]bool) // protocols we tested encode with so far
-		for _, pickle := range test.picklev {
-			for _, proto := range pickle.protov {
-				dataOk := strings.TrimPrefix(pickle.data, protoPrefixTemplate)
-				// protocols >= 2 must include "PROTO <ver>" prefix
-				if proto >= 2 && pickle.err == nil {
-					dataOk = string([]byte{opProto, byte(proto)}) + dataOk
-				}
-
-				t.Run(fmt.Sprintf("%s/proto=%d", test.name, proto), func(t *testing.T) {
-					testEncode(t, proto, test.objectIn, test.objectOut, dataOk, pickle.err)
-				})
-
-				alreadyTested[proto] = true
-			}
-		}
-
-		// test encode-decode roundtrip on not yet tested protocols
-		for proto := 0; proto <= highestProtocol; proto++ {
-			if alreadyTested[proto] {
+		for _, strictUnicode := range []bool{false, true} {
+			if  strictUnicode && !test.strictUnicodeY {
 				continue
 			}
+			if !strictUnicode && !test.strictUnicodeN {
+				continue
+			}
+			testname := fmt.Sprintf("%s/StrictUnicode=%s", test.name, yn(strictUnicode))
 
-			t.Run(fmt.Sprintf("%s/proto=%d(roundtrip)", test.name, proto), func(t *testing.T) {
-				testEncode(t, proto, test.objectIn, test.objectOut, "", nil)
-			})
+			alreadyTested := make(map[int]bool) // protocols we tested encode with so far
+			for _, pickle := range test.picklev {
+				for _, proto := range pickle.protov {
+					dataOk := strings.TrimPrefix(pickle.data, protoPrefixTemplate)
+					// protocols >= 2 must include "PROTO <ver>" prefix
+					if proto >= 2 && pickle.err == nil {
+						dataOk = string([]byte{opProto, byte(proto)}) + dataOk
+					}
+
+					t.Run(fmt.Sprintf("%s/proto=%d", testname, proto), func(t *testing.T) {
+						testEncode(t, proto, strictUnicode, test.objectIn, test.objectOut, dataOk, pickle.err)
+					})
+
+					alreadyTested[proto] = true
+				}
+			}
+
+			// test encode-decode roundtrip on not yet tested protocols
+			for proto := 0; proto <= highestProtocol; proto++ {
+				if alreadyTested[proto] {
+					continue
+				}
+
+				t.Run(fmt.Sprintf("%s/proto=%d(roundtrip)", testname, proto), func(t *testing.T) {
+					testEncode(t, proto, strictUnicode, test.objectIn, test.objectOut, "", nil)
+				})
+			}
 		}
 	}
 }
@@ -492,10 +561,16 @@ func TestEncode(t *testing.T) {
 //
 // It also verifies decoder robustness - via feeding it various kinds of
 // corrupt data derived from input.
-func testDecode(t *testing.T, object interface{}, input string) {
+func testDecode(t *testing.T, strictUnicode bool, object interface{}, input string) {
+	newDecoder := func(r io.Reader) *Decoder {
+		return NewDecoderWithConfig(r, &DecoderConfig{
+			StrictUnicode: strictUnicode,
+		})
+	}
+
 	// decode(input) -> expected
 	buf := bytes.NewBufferString(input)
-	dec := NewDecoder(buf)
+	dec := newDecoder(buf)
 	v, err := dec.Decode()
 	if err != nil {
 		t.Error(err)
@@ -514,7 +589,7 @@ func testDecode(t *testing.T, object interface{}, input string) {
 	// decode(truncated input) -> must return io.ErrUnexpectedEOF
 	for l := len(input) - 1; l > 0; l-- {
 		buf := bytes.NewBufferString(input[:l])
-		dec := NewDecoder(buf)
+		dec := newDecoder(buf)
 		v, err := dec.Decode()
 		if !(v == nil && err == io.ErrUnexpectedEOF) {
 			t.Errorf("no ErrUnexpectedEOF on [:%d] truncated stream: v = %#v  err = %#v", l, v, err)
@@ -525,7 +600,7 @@ func testDecode(t *testing.T, object interface{}, input string) {
 	// it must not panic.
 	for i := 0; i < len(input); i++ {
 		buf := bytes.NewBufferString(input[i:])
-		dec := NewDecoder(buf)
+		dec := newDecoder(buf)
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -547,11 +622,22 @@ func testDecode(t *testing.T, object interface{}, input string) {
 // encode-back tests are still performed.
 //
 // If errOk != nil, object encoding must produce that error.
-func testEncode(t *testing.T, proto int, object, objectDecodedBack interface{}, dataOk string, errOk error) {
+func testEncode(t *testing.T, proto int, strictUnicode bool, object, objectDecodedBack interface{}, dataOk string, errOk error) {
+	newEncoder := func(w io.Writer) *Encoder {
+		return NewEncoderWithConfig(w, &EncoderConfig{
+			Protocol:      proto,
+			StrictUnicode: strictUnicode,
+		})
+	}
+
+	newDecoder := func(r io.Reader) *Decoder {
+		return NewDecoderWithConfig(r, &DecoderConfig{
+			StrictUnicode: strictUnicode,
+		})
+	}
+
 	buf := &bytes.Buffer{}
-	enc := NewEncoderWithConfig(buf, &EncoderConfig{
-		Protocol: proto,
-	})
+	enc := newEncoder(buf)
 
 	// encode(object) == expected data
 	err := enc.Encode(object)
@@ -573,9 +659,7 @@ func testEncode(t *testing.T, proto int, object, objectDecodedBack interface{}, 
 	// encode | limited writer -> write error
 	for l := int64(len(data))-1; l >= 0; l-- {
 		buf.Reset()
-		enc = NewEncoderWithConfig(LimitWriter(buf, l), &EncoderConfig{
-			Protocol: proto,
-		})
+		enc = newEncoder(LimitWriter(buf, l))
 
 		err = enc.Encode(object)
 		if err != io.EOF {
@@ -584,7 +668,7 @@ func testEncode(t *testing.T, proto int, object, objectDecodedBack interface{}, 
 	}
 
 	// decode(encode(object)) == object
-	dec := NewDecoder(bytes.NewBufferString(data))
+	dec := newDecoder(bytes.NewBufferString(data))
 	v, err := dec.Decode()
 	if err != nil {
 		t.Errorf("encode -> decode -> error: %s", err)
@@ -969,9 +1053,10 @@ func TestStringsFmt(t *testing.T) {
 		in      interface{}
 		vhashok string
 	}{
-		{"мир",          `"мир"`},
-		{Bytes("мир"),   `ogórek.Bytes("мир")`},
-		{unicode("мир"), `ogórek.unicode("мир")`},
+		{"мир",             `"мир"`},
+		{Bytes("мир"),      `ogórek.Bytes("мир")`},
+		{ByteString("мир"), `ogórek.ByteString("мир")`},
+		{unicode("мир"),    `ogórek.unicode("мир")`},
 	}
 
 	for _, tt := range tvhash {
@@ -1002,3 +1087,12 @@ func (l *LimitedWriter) Write(p []byte) (n int, err error) {
 }
 
 func LimitWriter(w io.Writer, n int64) io.Writer { return &LimitedWriter{w, n} }
+
+
+// yn returns "y" or "n" for a boolean.
+func yn(b bool) string {
+	if b {
+		return "y"
+	}
+	return "n"
+}

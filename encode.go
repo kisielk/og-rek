@@ -14,7 +14,7 @@ import (
 const highestProtocol = 5 // highest protocol version we support generating
 
 // unicode is string that always encodes as unicode pickle object.
-// (regular string encodes to unicode pickle object only for protocol >= 3)
+// (regular string encodes to unicode pickle object only for protocol >= 3 by default)
 type unicode string
 
 type TypeError struct {
@@ -45,6 +45,12 @@ type EncoderConfig struct {
 	//
 	// See Ref documentation for more details.
 	PersistentRef func(obj interface{}) *Ref
+
+	// StrictUnicode, when true, requests to always encode Go string
+	// objects as Python unicode independently of used pickle protocol.
+	// See StrictUnicode mode documentation in top-level package overview
+	// for details.
+	StrictUnicode bool
 }
 
 // NewEncoder returns a new Encoder struct with default values
@@ -120,6 +126,8 @@ func (e *Encoder) encode(rv reflect.Value) error {
 			return e.encodeUnicode(rv.String())
 		case Bytes:
 			return e.encodeBytes(Bytes(rv.String()))
+		case ByteString:
+			return e.encodeByteString(rv.String())
 		default:
 			return e.encodeString(rv.String())
 		}
@@ -302,7 +310,7 @@ func (e *Encoder) encodeBytes(byt Bytes) error {
 
 	return e.encodeCall(&Call{
 		Callable: Class{Module: "_codecs", Name: "encode"},
-		Args:     Tuple{ulatin1, "latin1"},
+		Args:     Tuple{ulatin1, ByteString("latin1")},
 	})
 }
 
@@ -329,12 +337,17 @@ func (e *Encoder) encodeByteArray(bv []byte) error {
 }
 
 func (e *Encoder) encodeString(s string) error {
-	// protocol >= 3 -> encode string as unicode object
-	// (as python3 does)
-	if e.config.Protocol >= 3 {
+	// StrictUnicode || protocol >= 3 -> encode string as unicode object as py3 does
+	if e.config.StrictUnicode || e.config.Protocol >= 3 {
 		return e.encodeUnicode(s)
-	}
 
+	// !StrictUnicode && protocol <= 2 -> encode string as bytestr object as py2 does
+	} else {
+		return e.encodeByteString(s)
+	}
+}
+
+func (e *Encoder) encodeByteString(s string) error {
 	l := len(s)
 
 	// protocol >= 1  ->  BINSTRING*
