@@ -99,6 +99,20 @@
 // Please see DecoderConfig.PersistentLoad and EncoderConfig.PersistentRef for details.
 //
 //
+// Handling unpickled values
+//
+// On Python two different objects with different types can represent
+// essentially the same entity. For example 1 (int) and 1L (long) represent
+// integer number one via two different types and are decoded by ogórek into Go
+// types int64 and big.Int correspondingly. However on the Python side those
+// two representations are often used interchangeably and programs are usually
+// expected to handle both with the same effect. To help handling decoded
+// values with such differences ogórek provides utilities that bring objects
+// to common type irregardless of which type variant was used in the pickle
+// stream. For example AsInt64 tries to represent unpickled value as int64 if
+// possible and errors if not.
+//
+//
 // --------
 //
 // (*) ogórek is Polish for "pickle".
