@@ -26,9 +26,35 @@
 //	tuple	↔  ogórek.Tuple
 //	dict	↔  map[interface{}]interface{}
 //
-//	str        ↔  string         (+)
-//	bytes      ↔  ogórek.Bytes   (~)
-//	bytearray  ↔  []byte
+//
+// For strings there are two modes. In the first, default, mode both py2/py3
+// str and py2 unicode are decoded into string with py2 str being considered
+// as UTF-8 encoded. Correspondingly for protocol ≤ 2 Go string is encoded as
+// UTF-8 encoded py2 str, and for protocol ≥ 3 as py3 str / py2 unicode.
+// ogórek.ByteString can be used to produce bytestring objects after encoding
+// even for protocol ≥ 3. This mode tries to match Go string with str type of
+// target Python depending on protocol version, but looses information after
+// decoding/encoding cycle:
+//
+//	py2/py3 str  ↔  string                       StrictUnicode=n mode, default
+//	py2 unicode  →  string
+//	py2 str      ←  ogórek.ByteString
+//
+// However with StrictUnicode=y mode there is 1-1 mapping in between py2
+// unicode / py3 str vs Go string, and between py2 str vs ogórek.ByteString.
+// In this mode decoding/encoding and encoding/decoding operations are always
+// identity with respect to strings:
+//
+//	py2 unicode / py3 str  ↔  string             StrictUnicode=y mode
+//	py2 str                ↔  ogórek.ByteString
+//
+//
+// For bytes, unconditionally to string mode, there is direct 1-1 mapping in
+// between Python and Go types:
+//
+//	bytes        ↔  ogórek.Bytes   (~)
+//	bytearray    ↔  []byte
+//
 //
 //
 // Python classes and instances are mapped to Class and Call, for example:
@@ -112,14 +138,27 @@
 // stream. For example AsInt64 tries to represent unpickled value as int64 if
 // possible and errors if not.
 //
+// For strings the situation is similar, but a bit different.
+// On Python3 strings are unicode strings and binary data is represented by
+// bytes type. However on Python2 strings are bytestrings and could contain
+// both text and binary data. In the default mode py2 strings, the same way as
+// py2 unicode, are decoded into Go strings. However in StrictUnicode mode py2
+// strings are decoded into ByteString - the type specially dedicated to
+// represent them on Go side. There are two utilities to help programs handle
+// all those bytes/string data in the pickle stream in uniform way:
+//
+//     - the program should use AsString if it expects text   data -
+//       either unicode string, or byte string.
+//     - the program should use AsBytes  if it expects binary data -
+//	 either bytes, or byte string.
+//
+// Using the helpers fits into Python3 strings/bytes model but also allows to
+// handle the data generated from under Python2.
+//
 //
 // --------
 //
 // (*) ogórek is Polish for "pickle".
-//
-// (+) for Python2 both str and unicode are decoded into string with Python
-// str being considered as UTF-8 encoded. Correspondingly for protocol ≤ 2 Go
-// string is encoded as UTF-8 encoded Python str, and for protocol ≥ 3 as unicode.
 //
 // (~) bytes can be produced only by Python3 or zodbpickle (https://pypi.org/project/zodbpickle),
 // not by standard Python2. Respectively, for protocol ≤ 2, what ogórek produces

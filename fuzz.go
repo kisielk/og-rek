@@ -9,9 +9,22 @@ import (
 )
 
 func Fuzz(data []byte) int {
+	f1 := fuzz(data, false)
+	f2 := fuzz(data, true)
+
+	f := f1+f2
+	if f > 1 {
+		f = 1
+	}
+	return f
+}
+
+func fuzz(data []byte, strictUnicode bool) int {
 	// obj = decode(data) - this tests things like stack overflow in Decoder
 	buf := bytes.NewBuffer(data)
-	dec := NewDecoder(buf)
+	dec := NewDecoderWithConfig(buf, &DecoderConfig{
+		StrictUnicode: strictUnicode,
+	})
 	obj, err := dec.Decode()
 	if err != nil {
 		return 0
@@ -25,9 +38,12 @@ func Fuzz(data []byte) int {
 	// because obj - as we got it as decoding from input - is known not to
 	// contain arbitrary Go structs.
 	for proto := 0; proto <= highestProtocol; proto++ {
+		subj := fmt.Sprintf("strictUnicode %v: protocol %d", strictUnicode, proto)
+
 		buf.Reset()
 		enc := NewEncoderWithConfig(buf, &EncoderConfig{
-			Protocol: proto,
+			Protocol:      proto,
+			StrictUnicode: strictUnicode,
 		})
 		err = enc.Encode(obj)
 		if err != nil {
@@ -46,19 +62,21 @@ func Fuzz(data []byte) int {
 				// we cannot encode Class (GLOBAL opcode) with \n at proto <= 4
 				continue
 			}
-			panic(fmt.Sprintf("protocol %d: encode error: %s", proto, err))
+			panic(fmt.Sprintf("%s: encode error: %s", subj, err))
 		}
 		encoded := buf.String()
 
-		dec = NewDecoder(bytes.NewBufferString(encoded))
+		dec = NewDecoderWithConfig(bytes.NewBufferString(encoded), &DecoderConfig{
+			StrictUnicode: strictUnicode,
+		})
 		obj2, err := dec.Decode()
 		if err != nil {
 			// must succeed, as buf should contain valid pickle from encoder
-			panic(fmt.Sprintf("protocol %d: decode back error: %s\npickle: %q", proto, err, encoded))
+			panic(fmt.Sprintf("%s: decode back error: %s\npickle: %q", subj, err, encoded))
 		}
 
 		if !reflect.DeepEqual(obj, obj2) {
-			panic(fmt.Sprintf("protocol %d: decode·encode != identity:\nhave: %#v\nwant: %#v", proto, obj2, obj))
+			panic(fmt.Sprintf("%s: decode·encode != identity:\nhave: %#v\nwant: %#v", subj, obj2, obj))
 		}
 	}
 
