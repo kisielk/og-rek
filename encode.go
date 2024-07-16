@@ -53,7 +53,9 @@ type EncoderConfig struct {
 	StrictUnicode bool
 }
 
-// NewEncoder returns a new Encoder struct with default values
+// NewEncoder returns a new Encoder with the default configuration.
+//
+// The encoder will emit pickle stream into w.
 func NewEncoder(w io.Writer) *Encoder {
 	return NewEncoderWithConfig(w, &EncoderConfig{
 		// allow both Python2 and Python3 to decode what ogórek produces by default
@@ -61,7 +63,9 @@ func NewEncoder(w io.Writer) *Encoder {
 	})
 }
 
-// NewEncoderWithConfig is similar to NewEncoder, but allows specifying the encoder configuration.
+// NewEncoderWithConfig is similar to NewEncoder, but returns the encoder with the specified configuration.
+//
+// config must not be nil.
 func NewEncoderWithConfig(w io.Writer, config *EncoderConfig) *Encoder {
 	return &Encoder{w: w, config: config}
 }
@@ -151,7 +155,7 @@ func (e *Encoder) encode(rv reflect.Value) error {
 
 	case reflect.Interface:
 		// recurse until we get a concrete type
-		// could be optmized into a tail call
+		// could be optimized into a tail call
 		return e.encode(rv.Elem())
 
 	case reflect.Ptr:

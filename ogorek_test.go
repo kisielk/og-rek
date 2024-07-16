@@ -100,7 +100,7 @@ type TestEntry struct {
 //   represents protocol=1, P1_ represents protocol >= 1) must give the pickle data.
 //   Decoding the pickle data must give the object.
 
-// X is syntatic sugar to prepare one TestEntry.
+// X is syntactic sugar to prepare one TestEntry.
 //
 // the entry is tested under both StrictUnicode=n and StrictUnicode=y modes.
 func X(name string, object interface{}, picklev ...TestPickle) TestEntry {
@@ -122,7 +122,7 @@ func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry 
 	return x
 }
 
-// Xloosy is syntatic sugar to prepare one TestEntry with loosy incoding.
+// Xloosy is syntactic sugar to prepare one TestEntry with loosy encoding.
 //
 // It should be used only if objectIn contains Go structs.
 func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
@@ -794,7 +794,7 @@ func TestDecodeError(t *testing.T) {
 		"}(I1\ns.",                  // EMPTY_DICT + MARK + INT + SETITEM
 		"(Q.",                       // MARK + BINPERSID
 
-		// \r\n should not be read as combind EOL - only \n is
+		// \r\n should not be read as combined EOL - only \n is
 		"L123L\r\n.",
 		"S'abc'\r\n.",
 
