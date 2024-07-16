@@ -67,7 +67,7 @@ const (
 	// Protocol 2
 
 	opProto    byte = '\x80' // identify pickle protocol
-	opNewobj   byte = '\x81' // build object by applying cls.__new__ to argtuple
+	opNewobj   byte = '\x81' // build object: cls argv -> cls.__new__(*argv)
 	opExt1     byte = '\x82' // push object from extension registry; 1-byte index
 	opExt2     byte = '\x83' // ditto, but 2-byte index
 	opExt4     byte = '\x84' // ditto, but 4-byte index
@@ -93,7 +93,7 @@ const (
 	opAddItems        byte = '\x90' // add items to existing set
 	opFrozenSet       byte = '\x91' // build a frozenset out of mark..top
 	opNewobjEx        byte = '\x92' // build object: cls argv kw -> cls.__new__(*argv, **kw)
-	opStackGlobal     byte = '\x93' // same as OpGlobal but using names on the stacks
+	opStackGlobal     byte = '\x93' // same as opGlobal but using names on the stacks
 	opMemoize         byte = '\x94' // store top of the stack in memo
 	opFrame           byte = '\x95' // indicate the beginning of a new frame
 
@@ -191,12 +191,16 @@ type DecoderConfig struct {
 	StrictUnicode bool
 }
 
-// NewDecoder constructs a new Decoder which will decode the pickle stream in r.
+// NewDecoder returns a new Decoder with the default configuration.
+//
+// The decoder will decode the pickle stream in r.
 func NewDecoder(r io.Reader) *Decoder {
 	return NewDecoderWithConfig(r, &DecoderConfig{})
 }
 
-// NewDecoderWithConfig is similar to NewDecoder, but allows specifying decoder configuration.
+// NewDecoderWithConfig is similar to NewDecoder, but returns decoder with the specified configuration.
+//
+// config must not be nil.
 func NewDecoderWithConfig(r io.Reader, config *DecoderConfig) *Decoder {
 	reader := bufio.NewReader(r)
 	return &Decoder{
@@ -1321,7 +1325,7 @@ func (d *Decoder) readOnlyBuffer() error {
 }
 
 // unquoteChar is like strconv.UnquoteChar, but returns io.ErrUnexpectedEOF
-// instead of strconv.ErrSyntax, when input is prematurely terminted.
+// instead of strconv.ErrSyntax, when input is prematurely terminated.
 //
 // XXX remove if ever something like https://golang.org/cl/37052 is accepted.
 func unquoteChar(s string, quote byte) (value rune, multibyte bool, tail string, err error) {
@@ -1342,7 +1346,7 @@ func unquoteChar(s string, quote byte) (value rune, multibyte bool, tail string,
 
 	// + "0"*9 should make s valid if it was cut, e.g. "\U012" becomes "\U012000000000".
 	// On the other hand, if s was invalid, e.g. "\Uz"
-	// it will remain invaild even with the suffix.
+	// it will remain invalid even with the suffix.
 	_, _, _, err2 := strconv.UnquoteChar(s + "000000000", quote)
 	if err2 == nil {
 		err = io.ErrUnexpectedEOF
