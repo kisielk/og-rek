@@ -440,10 +440,10 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
 	// protocol >= 1: BININT*
 	if e.config.Protocol >= 1 {
 		switch {
-		case i > 0 && i < math.MaxUint8:
+		case i >= 0 && i <= math.MaxUint8:
 			return e.emit(opBinint1, byte(i))
 
-		case i > 0 && i < math.MaxUint16:
+		case i >= 0 && i <= math.MaxUint16:
 			return e.emit(opBinint2, byte(i), byte(i >> 8))
 
 		case i >= math.MinInt32 && i <= math.MaxInt32:
