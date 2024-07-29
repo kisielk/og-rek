@@ -191,13 +191,25 @@ var tests = []TestEntry{
 		P01("I00\n."), // INT 00
 		P2_("\x89.")), // NEWFALSE
 
+	X("int(0)", int64(0),
+		P0("I0\n."),    // INT
+		P1_("K\x00.")), // BININT1
+
 	X("int(5)", int64(5),
 		P0("I5\n."),    // INT
 		P1_("K\x05.")), // BININT1
 
+	X("int(0xff)", int64(0xff),
+		P0("I255\n."),  // INT
+		P1_("K\xff.")), // BININT1
+
 	X("int(0x123)", int64(0x123),
 		P0("I291\n."),      // INT
 		P1_("M\x23\x01.")), // BININT2
+
+	X("int(0xffff)", int64(0xffff),
+		P0("I65535\n."),    // INT
+		P1_("M\xff\xff.")), // BININT2
 
 	X("int(0x12345)", int64(0x12345),
 		P0("I74565\n."),            // INT
