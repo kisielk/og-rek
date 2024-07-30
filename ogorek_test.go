@@ -1000,8 +1000,10 @@ func BenchmarkEncode(b *testing.B) {
 	input := make([]interface{}, 0)
 	approxOutSize := 0
 	for _, test := range tests {
-		input = append(input, test.objectIn)
-		approxOutSize += len(test.picklev[0].data)
+		if test.picklev[0].err == nil {
+			input = append(input, test.objectIn)
+			approxOutSize += len(test.picklev[0].data)
+		}
 	}
 
 	buf := bytes.NewBuffer(make([]byte, approxOutSize))
