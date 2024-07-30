@@ -953,8 +953,13 @@ func BenchmarkDecode(b *testing.B) {
 				continue
 			}
 			// not prepending `PROTO <ver>` - decoder should be
-			// able to decode without it.
-			input = append(input, pickle.data...)
+			// able to decode without it. But if the pickle already
+			// comes with `PROTO 0xff` change it to `PROTO 3`.
+			data := pickle.data
+			if strings.HasPrefix(data, protoPrefixTemplate) {
+				data = string([]byte{opProto, 3}) + data[len(protoPrefixTemplate):]
+			}
+			input = append(input, data...)
 			npickle++
 		}
 	}
@@ -986,8 +991,10 @@ func BenchmarkEncode(b *testing.B) {
 	input := make([]interface{}, 0)
 	approxOutSize := 0
 	for _, test := range tests {
-		input = append(input, test.objectIn)
-		approxOutSize += len(test.picklev[0].data)
+		if test.picklev[0].err == nil {
+			input = append(input, test.objectIn)
+			approxOutSize += len(test.picklev[0].data)
+		}
 	}
 
 	buf := bytes.NewBuffer(make([]byte, approxOutSize))
