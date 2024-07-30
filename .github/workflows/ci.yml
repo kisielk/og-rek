@@ -37,3 +37,4 @@ jobs:
         fetch-depth: 0 # Make "git describe" work
 
     - run: go test
+    - run: go test -run ø -bench . -benchtime 1x
