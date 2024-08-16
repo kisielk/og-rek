@@ -903,16 +903,15 @@ func (d *Decoder) loadUnicode() error {
 }
 
 func (d *Decoder) loadBinUnicode() error {
-	var length int32
-	for i := 0; i < 4; i++ {
-		t, err := d.r.ReadByte()
-		if err != nil {
-			return err
-		}
-		length = length | (int32(t) << uint(8*i))
+	var b [4]byte
+	_, err := io.ReadFull(d.r, b[:])
+	if err != nil {
+		return err
 	}
+	length := binary.LittleEndian.Uint32(b[:])
+
 	rawB := []byte{}
-	for z := 0; int32(z) < length; z++ {
+	for z := length; z > 0; z-- {
 		n, err := d.r.ReadByte()
 		if err != nil {
 			return err

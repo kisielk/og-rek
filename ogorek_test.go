@@ -776,9 +776,11 @@ func TestDecodeError(t *testing.T) {
 		// invalid protocol version
 		"\x80\xffI1\n.",
 
-		// BINSTRING with big len and no data
+		// BINSTRING and BINUNICODE with big len and no data
 		// (might cause out-of-memory DOS if buffer is preallocated blindly)
 		"T\xff\xff\xff\xff.",
+		"X\xff\xff\xff\xff.",
+
 
 		// it is invalid to expose mark object
 		"(.",                        // MARK
