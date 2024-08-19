@@ -85,6 +85,9 @@ type TestEntry struct {
 
 	strictUnicodeN bool // whether to test with StrictUnicode=n while decoding/encoding
 	strictUnicodeY bool // whether to test with StrictUnicode=y while decoding/encoding
+
+	pyDictN bool // whether to test with PyDict=n while decoding/encoding
+	pyDictY bool // ----//----           PyDict=y
 }
 
 // X, I, P0, P1, P* form a language to describe decode/encode tests:
@@ -104,7 +107,8 @@ type TestEntry struct {
 // the entry is tested under both StrictUnicode=n and StrictUnicode=y modes.
 func X(name string, object interface{}, picklev ...TestPickle) TestEntry {
 	return TestEntry{name: name, objectIn: object, objectOut: object, picklev: picklev,
-			 strictUnicodeN: true, strictUnicodeY: true}
+			 strictUnicodeN: true, strictUnicodeY: true,
+			 pyDictN: true, pyDictY: true}
 }
 
 // Xuauto is syntactic sugar to prepare one TestEntry that is tested only under StrictUnicode=n mode.
@@ -121,6 +125,38 @@ func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry 
 	return x
 }
 
+// Xdgo is syntactic sugar to prepare one TestEntry that is tested only under PyDict=n mode.
+func Xdgo(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.pyDictY = false
+	return x
+}
+
+// Xdpy is syntactic sugar to prepare one TestEntry that is tested only under PyDict=y mode.
+func Xdpy(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.pyDictN = false
+	return x
+}
+
+// Xuauto_dgo is syntactic sugar to prepare one TestEntry that is tested only
+// under StrictUnicode=n ^ pyDict=n mode.
+func Xuauto_dgo(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.strictUnicodeY = false
+	x.pyDictY = false
+	return x
+}
+
+// Xuauto_dpy is syntactic sugar to prepare one TestEntry that is tested only
+// under StrictUnicode=n ^ pyDict=y mode.
+func Xuauto_dpy(name string, object interface{}, picklev ...TestPickle) TestEntry {
+	x := X(name, object, picklev...)
+	x.strictUnicodeY = false
+	x.pyDictN = false
+	return x
+}
+
 // Xloosy is syntactic sugar to prepare one TestEntry with loosy encoding.
 func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
 	x := X(name, objectIn, picklev...)
@@ -128,9 +164,9 @@ func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle)
 	return x
 }
 
-// Xloosy_uauto is like Xuauto but for Xloosy.
-func Xloosy_uauto(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
-	x := Xuauto(name, objectIn, picklev...)
+// Xloosy_uauto_dgo is like Xuauto_dgo but for Xloosy.
+func Xloosy_uauto_dgo(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
+	x := Xuauto_dgo(name, objectIn, picklev...)
 	x.objectOut = objectOut
 	return x
 }
@@ -415,19 +451,20 @@ var tests = []TestEntry{
 		// bytearray(text, encoding); GLOBAL + BINUNICODE + TUPLE + REDUCE
 		I("c__builtin__\nbytearray\nq\x00(X\x13\x00\x00\x00hello\n\xc3\x90\xc2\xbc\xc3\x90\xc2\xb8\xc3\x91\xc2\x80\x01q\x01X\x07\x00\x00\x00latin-1q\x02tq\x03Rq\x04.")),
 
+	// dicts in default PyDict=n mode
 
-	X("dict({})", make(map[interface{}]interface{}),
+	Xdgo("dict({})", make(map[interface{}]interface{}),
 		P0("(d."), // MARK + DICT
 		P1_("}."), // EMPTY_DICT
 		I("(dp0\n.")),
 
-	Xuauto("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
+	Xuauto_dgo("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
 		P0("(S\"a\"\nS\"1\"\nd."),                     // MARK + STRING + DICT
 		P12("(U\x01aU\x011d."),                        // MARK + SHORT_BINSTRING + DICT
 		P3("(X\x01\x00\x00\x00aX\x01\x00\x00\x001d."), // MARK + BINUNICODE + DICT
 		P4_("(\x8c\x01a\x8c\x011d.")),                 // MARK + SHORT_BINUNICODE + DICT
 
-	Xuauto("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
+	Xuauto_dgo("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
 		// map iteration order is not stable - test only decoding
 		I("(S\"a\"\nS\"1\"\nS\"b\"\nS\"2\"\nd."), // P0: MARK + STRING + DICT
 		I("(U\x01aU\x011U\x01bU\x012d."),         // P12: MARK + SHORT_BINSTRING + DICT
@@ -439,6 +476,47 @@ var tests = []TestEntry{
 		I("(dS'a'\nS'1'\nsS'b'\nS'2'\ns."),           // MARK + DICT + STRING + SETITEM
 		I("}(U\x01aU\x011U\x01bU\x012u."),            // EMPTY_DICT + MARK + SHORT_BINSTRING + SETITEMS
 		I("(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.")),
+
+	// dicts in PyDict=y mode
+
+	Xdpy("dict({})", NewDict(),
+		P0("(d."), // MARK + DICT
+		P1_("}."), // EMPTY_DICT
+		I("(dp0\n.")),
+
+	Xuauto_dpy("dict({'a': '1'})", NewDictWithData("a","1"),
+		P0("(S\"a\"\nS\"1\"\nd."),                     // MARK + STRING + DICT
+		P12("(U\x01aU\x011d."),                        // MARK + SHORT_BINSTRING + DICT
+		P3("(X\x01\x00\x00\x00aX\x01\x00\x00\x001d."), // MARK + BINUNICODE + DICT
+		P4_("(\x8c\x01a\x8c\x011d.")),                 // MARK + SHORT_BINUNICODE + DICT
+
+	Xuauto_dpy("dict({'a': '1', 'b': '2'})", NewDictWithData("a","1", "b","2"),
+		// map iteration order is not stable - test only decoding
+		I("(S\"a\"\nS\"1\"\nS\"b\"\nS\"2\"\nd."), // P0: MARK + STRING + DICT
+		I("(U\x01aU\x011U\x01bU\x012d."),         // P12: MARK + SHORT_BINSTRING + DICT
+
+		// P3: MARK + BINUNICODE + DICT
+		I("(X\x01\x00\x00\x00aX\x01\x00\x00\x001X\x01\x00\x00\x00bX\x01\x00\x00\x002d."),
+
+		I("(\x8c\x01a\x8c\x011\x8c\x01b\x8c\x012d."), // P4_: MARK + SHORT_BINUNICODE + DICT
+		I("(dS'a'\nS'1'\nsS'b'\nS'2'\ns."),           // MARK + DICT + STRING + SETITEM
+		I("}(U\x01aU\x011U\x01bU\x012u."),            // EMPTY_DICT + MARK + SHORT_BINSTRING + SETITEMS
+		I("(dp0\nS'a'\np1\nS'1'\np2\nsS'b'\np3\nS'2'\np4\ns.")),
+
+	Xdpy("dict({123L: 0})", NewDictWithData(bigInt("123"), int64(0)),
+		P0("(L123L\nI0\nd."),    // MARK + LONG + INT + DICT
+		P1("(L123L\nK\x00d."),   // MARK + LONG + BININT1 + DICT
+		I("(\x8a\x01{K\x00d.")), // MARK + LONG1 + BININT1 + DICT
+
+	Xdpy("dict(tuple(): 0)", NewDictWithData(Tuple{}, int64(0)),
+		P0("((tI0\nd."),   // MARK + MARK + TUPLE + INT + DICT
+		P1_("()K\x00d.")), // MARK + EMPTY_TUPLE + BININT1 + DICT
+
+	Xdpy("dict(tuple(1,2): 0)", NewDictWithData(Tuple{int64(1), int64(2)}, int64(0)),
+		P0("((I1\nI2\ntI0\nd."),        // MARK + MARK + INT + INT + TUPLE + INT + DICT
+		P1("((K\x01K\x02tK\x00d."),     // MARK + MARK + BININT1 + BININT1 + TUPLE + BININT1 + DICT
+		P2_("(K\x01K\x02\x86K\x00d.")), // MARK + BININT1 + BININT1 + TUPLE2 + BININT1 + DICT
+
 
 	Xuauto("foo.bar  # global", Class{Module: "foo", Name: "bar"},
 		P0123("cfoo\nbar\n."),              // GLOBAL
@@ -479,9 +557,9 @@ var tests = []TestEntry{
 	X("LONG_BINPUT", []interface{}{int64(17)},
 		I("(lr0000I17\na.")),
 
-	Xuauto("graphite message1", graphiteObject1, graphitePickle1),
-	Xuauto("graphite message2", graphiteObject2, graphitePickle2),
-	Xuauto("graphite message3", graphiteObject3, graphitePickle3),
+	Xuauto_dgo("graphite message1", graphiteObject1, graphitePickle1),
+	Xuauto_dgo("graphite message2", graphiteObject2, graphitePickle2),
+	Xuauto_dgo("graphite message3", graphiteObject3, graphitePickle3),
 	Xuauto("too long line", longLine, I("V" + longLine + "\n.")),
 
 	// opcodes from protocol 4
@@ -491,7 +569,7 @@ var tests = []TestEntry{
 
 	// loosy encode: decoding back gives another object.
 	// the only case where ogórek encoding is loosy is for Go struct types.
-	Xloosy_uauto("[]ogórek.foo{\"Qux\", 4}", []foo{{"Qux", 4}},
+	Xloosy_uauto_dgo("[]ogórek.foo{\"Qux\", 4}", []foo{{"Qux", 4}},
 		[]interface{}{map[interface{}]interface{}{"Foo": "Qux", "Bar": int64(4)}},
 
 		// MARK + STRING + INT + DICT + LIST
@@ -518,9 +596,16 @@ type foo struct {
 // protocol prefix is always automatically prepended and is always concrete.
 var protoPrefixTemplate = string([]byte{opProto, 0xff})
 
-// TestDecode verifies ogórek decoder.
-func TestDecode(t *testing.T) {
-	for _, test := range tests {
+// WithEachMode runs f under all decoding/encoding modes covered by test entry.
+func (test TestEntry) WithEachMode(t *testing.T, f func(t *testing.T, decConfig DecoderConfig, encConfig EncoderConfig)) {
+	for _, pyDict := range []bool{false, true} {
+		if pyDict && !test.pyDictY {
+			continue
+		}
+		if !pyDict && !test.pyDictN {
+			continue
+		}
+
 		for _, strictUnicode := range []bool{false, true} {
 			if  strictUnicode && !test.strictUnicodeY {
 				continue
@@ -528,8 +613,28 @@ func TestDecode(t *testing.T) {
 			if !strictUnicode && !test.strictUnicodeN {
 				continue
 			}
-			testname := fmt.Sprintf("%s/StrictUnicode=%s", test.name, yn(strictUnicode))
 
+			t.Run(fmt.Sprintf("%s/PyDict=%s/StrictUnicode=%s", test.name, yn(pyDict), yn(strictUnicode)),
+			      func(t *testing.T) {
+				decConfig := DecoderConfig{
+					PyDict:        pyDict,
+					StrictUnicode: strictUnicode,
+				}
+				encConfig := EncoderConfig{
+					// no PyDict setting for encoder
+					StrictUnicode: strictUnicode,
+				}
+				f(t, decConfig, encConfig)
+			})
+
+		}
+	}
+}
+
+// TestDecode verifies ogórek decoder.
+func TestDecode(t *testing.T) {
+	for _, test := range tests {
+		test.WithEachMode(t, func(t *testing.T, decConfig DecoderConfig, encConfig EncoderConfig) {
 			for _, pickle := range test.picklev {
 				if pickle.err != nil {
 					continue
@@ -542,32 +647,24 @@ func TestDecode(t *testing.T) {
 						data := string([]byte{opProto, byte(proto)}) +
 							pickle.data[len(protoPrefixTemplate):]
 
-						t.Run(fmt.Sprintf("%s/%q/proto=%d", testname, data, proto), func(t *testing.T) {
-							testDecode(t, strictUnicode, test.objectOut, data)
+						t.Run(fmt.Sprintf("%q/proto=%d", data, proto), func(t *testing.T) {
+							testDecode(t, decConfig, test.objectOut, data)
 						})
 					}
 				} else {
-					t.Run(fmt.Sprintf("%s/%q", testname, pickle.data), func(t *testing.T) {
-						testDecode(t, strictUnicode, test.objectOut, pickle.data)
+					t.Run(fmt.Sprintf("%q", pickle.data), func(t *testing.T) {
+						testDecode(t, decConfig, test.objectOut, pickle.data)
 					})
 				}
 			}
-		}
+		})
 	}
 }
 
 // TestEncode verifies ogórek encoder.
 func TestEncode(t *testing.T) {
 	for _, test := range tests {
-		for _, strictUnicode := range []bool{false, true} {
-			if  strictUnicode && !test.strictUnicodeY {
-				continue
-			}
-			if !strictUnicode && !test.strictUnicodeN {
-				continue
-			}
-			testname := fmt.Sprintf("%s/StrictUnicode=%s", test.name, yn(strictUnicode))
-
+		test.WithEachMode(t, func(t *testing.T, decConfig DecoderConfig, encConfig EncoderConfig) {
 			alreadyTested := make(map[int]bool) // protocols we tested encode with so far
 			for _, pickle := range test.picklev {
 				for _, proto := range pickle.protov {
@@ -577,8 +674,8 @@ func TestEncode(t *testing.T) {
 						dataOk = string([]byte{opProto, byte(proto)}) + dataOk
 					}
 
-					t.Run(fmt.Sprintf("%s/proto=%d", testname, proto), func(t *testing.T) {
-						testEncode(t, proto, strictUnicode, test.objectIn, test.objectOut, dataOk, pickle.err)
+					t.Run(fmt.Sprintf("proto=%d", proto), func(t *testing.T) {
+						testEncode(t, proto, encConfig, decConfig, test.objectIn, test.objectOut, dataOk, pickle.err)
 					})
 
 					alreadyTested[proto] = true
@@ -591,11 +688,11 @@ func TestEncode(t *testing.T) {
 					continue
 				}
 
-				t.Run(fmt.Sprintf("%s/proto=%d(roundtrip)", testname, proto), func(t *testing.T) {
-					testEncode(t, proto, strictUnicode, test.objectIn, test.objectOut, "", nil)
+				t.Run(fmt.Sprintf("proto=%d(roundtrip)", proto), func(t *testing.T) {
+					testEncode(t, proto, encConfig, decConfig, test.objectIn, test.objectOut, "", nil)
 				})
 			}
-		}
+		})
 	}
 }
 
@@ -603,11 +700,9 @@ func TestEncode(t *testing.T) {
 //
 // It also verifies decoder robustness - via feeding it various kinds of
 // corrupt data derived from input.
-func testDecode(t *testing.T, strictUnicode bool, object interface{}, input string) {
+func testDecode(t *testing.T, decConfig DecoderConfig, object interface{}, input string) {
 	newDecoder := func(r io.Reader) *Decoder {
-		return NewDecoderWithConfig(r, &DecoderConfig{
-			StrictUnicode: strictUnicode,
-		})
+		return NewDecoderWithConfig(r, &decConfig)
 	}
 
 	// decode(input) -> expected
@@ -664,18 +759,16 @@ func testDecode(t *testing.T, strictUnicode bool, object interface{}, input stri
 // encode-back tests are still performed.
 //
 // If errOk != nil, object encoding must produce that error.
-func testEncode(t *testing.T, proto int, strictUnicode bool, object, objectDecodedBack interface{}, dataOk string, errOk error) {
+func testEncode(t *testing.T, proto int, encConfig EncoderConfig, decConfig DecoderConfig, object, objectDecodedBack interface{}, dataOk string, errOk error) {
 	newEncoder := func(w io.Writer) *Encoder {
-		return NewEncoderWithConfig(w, &EncoderConfig{
-			Protocol:      proto,
-			StrictUnicode: strictUnicode,
-		})
+		econf := EncoderConfig{}
+		econf = encConfig
+		econf.Protocol = proto
+		return NewEncoderWithConfig(w, &econf)
 	}
 
 	newDecoder := func(r io.Reader) *Decoder {
-		return NewDecoderWithConfig(r, &DecoderConfig{
-			StrictUnicode: strictUnicode,
-		})
+		return NewDecoderWithConfig(r, &decConfig)
 	}
 
 	buf := &bytes.Buffer{}
@@ -1011,7 +1104,9 @@ func BenchmarkDecode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		buf := bytes.NewBuffer(input)
-		dec := NewDecoder(buf)
+		dec := NewDecoderWithConfig(buf, &DecoderConfig{
+			PyDict: true, // so that decoding e.g. {(): 0} does not fail
+		})
 
 		j := 0
 		for ; ; j++ {

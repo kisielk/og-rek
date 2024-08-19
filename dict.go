@@ -15,7 +15,7 @@ import (
 	"github.com/aristanetworks/gomap"
 )
 
-// Dict represents dict from Python.
+// Dict represents dict from Python in PyDict mode.
 //
 // It mirrors Python with respect to which types are allowed to be used as
 // keys, and with respect to keys equality. For example Tuple is allowed to be
@@ -26,6 +26,8 @@ import (
 // equal, even if their underlying content is the same. However with same
 // underlying content ByteString, because it represents str type from Python2,
 // is treated equal to both Bytes and string.
+//
+// See PyDict mode documentation in top-level package overview for details.
 //
 // Note: similarly to builtin map Dict is pointer-like type: its zero-value
 // represents nil dictionary that is empty and invalid to use Set on.

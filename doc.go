@@ -22,12 +22,29 @@
 //	long	↔  *big.Int
 //	float	↔  float64
 //	float	←  floatX
-//	list	↔  []interface{}
+//	list	↔  []any
 //	tuple	↔  ogórek.Tuple
-//	dict	↔  map[interface{}]interface{}
 //
 //
-// For strings there are two modes. In the first, default, mode both py2/py3
+// For dicts there are two modes. In the first, default, mode Python dicts are
+// decoded into standard Go map. This mode tries to use builtin Go type, but
+// cannot mirror py behaviour fully because e.g. int(1), big.Int(1) and
+// float64(1.0) are all treated as different keys by Go, while Python treats
+// them as being equal. It also does not support decoding dicts with tuple
+// used in keys:
+//
+//      dict    ↔  map[any]any                       PyDict=n mode, default
+//              ←  ogórek.Dict
+//
+// With PyDict=y mode, however, Python dicts are decoded as ogórek.Dict which
+// mirrors behaviour of Python dict with respect to keys equality, and with
+// respect to which types are allowed to be used as keys.
+//
+//      dict    ↔  ogórek.Dict                       PyDict=y mode
+//              ←  map[any]any
+//
+//
+// For strings there are also two modes. In the first, default, mode both py2/py3
 // str and py2 unicode are decoded into string with py2 str being considered
 // as UTF-8 encoded. Correspondingly for protocol ≤ 2 Go string is encoded as
 // UTF-8 encoded py2 str, and for protocol ≥ 3 as py3 str / py2 unicode.
@@ -154,6 +171,11 @@
 //
 // Using the helpers fits into Python3 strings/bytes model but also allows to
 // handle the data generated from under Python2.
+//
+// Similarly Dict considers ByteString to be equal to both string and Bytes
+// with the same underlying content. This allows programs to access Dict via
+// string/bytes keys following Python3 model, while still being able to handle
+// dictionaries generated from under Python2.
 //
 //
 // --------

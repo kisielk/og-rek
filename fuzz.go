@@ -8,20 +8,24 @@ import (
 )
 
 func Fuzz(data []byte) int {
-	f1 := fuzz(data, false)
-	f2 := fuzz(data, true)
+	f := 0
 
-	f := f1+f2
+	f += fuzz(data, false, false)
+	f += fuzz(data, false, true)
+	f += fuzz(data, true,  false)
+	f += fuzz(data, true,  true)
+
 	if f > 1 {
 		f = 1
 	}
 	return f
 }
 
-func fuzz(data []byte, strictUnicode bool) int {
+func fuzz(data []byte, pyDict, strictUnicode bool) int {
 	// obj = decode(data) - this tests things like stack overflow in Decoder
 	buf := bytes.NewBuffer(data)
 	dec := NewDecoderWithConfig(buf, &DecoderConfig{
+		PyDict:        pyDict,
 		StrictUnicode: strictUnicode,
 	})
 	obj, err := dec.Decode()
@@ -37,7 +41,7 @@ func fuzz(data []byte, strictUnicode bool) int {
 	// because obj - as we got it as decoding from input - is known not to
 	// contain arbitrary Go structs.
 	for proto := 0; proto <= highestProtocol; proto++ {
-		subj := fmt.Sprintf("strictUnicode %v: protocol %d", strictUnicode, proto)
+		subj := fmt.Sprintf("pyDict %v: strictUnicode %v: protocol %d", pyDict, strictUnicode, proto)
 
 		buf.Reset()
 		enc := NewEncoderWithConfig(buf, &EncoderConfig{
@@ -66,6 +70,7 @@ func fuzz(data []byte, strictUnicode bool) int {
 		encoded := buf.String()
 
 		dec = NewDecoderWithConfig(bytes.NewBufferString(encoded), &DecoderConfig{
+			PyDict:        pyDict,
 			StrictUnicode: strictUnicode,
 		})
 		obj2, err := dec.Decode()
