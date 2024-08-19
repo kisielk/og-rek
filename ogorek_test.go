@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -619,7 +618,7 @@ func testDecode(t *testing.T, strictUnicode bool, object interface{}, input stri
 		t.Error(err)
 	}
 
-	if !reflect.DeepEqual(v, object) {
+	if !deepEqual(v, object) {
 		t.Errorf("decode:\nhave: %#v\nwant: %#v", v, object)
 	}
 
@@ -716,9 +715,9 @@ func testEncode(t *testing.T, proto int, strictUnicode bool, object, objectDecod
 	if err != nil {
 		t.Errorf("encode -> decode -> error: %s", err)
 	} else {
-		if !reflect.DeepEqual(v, objectDecodedBack) {
+		if !deepEqual(v, objectDecodedBack) {
 			what := "identity"
-			if !reflect.DeepEqual(object, objectDecodedBack) {
+			if !deepEqual(object, objectDecodedBack) {
 				what = "expected object"
 			}
 			t.Errorf("encode -> decode != %s\nhave: %#v\nwant: %#v", what, v, objectDecodedBack)
@@ -742,7 +741,7 @@ func TestDecodeMultiple(t *testing.T) {
 			t.Errorf("step #%v: %v", i, err)
 		}
 
-		if !reflect.DeepEqual(obj, objOk) {
+		if !deepEqual(obj, objOk) {
 			t.Errorf("step #%v: %q  ; want %q", i, obj, objOk)
 		}
 	}
@@ -929,7 +928,7 @@ func TestPersistentRefs(t *testing.T) {
 			errExpect = "pickle: handleRef: " + e.Error()
 		}
 
-		if !(reflect.DeepEqual(v, expected) &&
+		if !(deepEqual(v, expected) &&
 			((err == nil && errExpect == "") || err.Error() == errExpect)) {
 			t.Errorf("%q: decode -> %#v, %q; want %#v, %q",
 				tt.input, v, err, expected, errExpect)
@@ -955,7 +954,7 @@ func TestPersistentRefs(t *testing.T) {
 			continue
 		}
 
-		if !reflect.DeepEqual(v, tt.expected) {
+		if !deepEqual(v, tt.expected) {
 			t.Errorf("%q: expected -> encode -> decode != identity\nhave: %#v\nwant: %#v",
 				tt.input, v, tt.expected)
 		}

@@ -5,7 +5,6 @@ package ogórek
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 )
 
 func Fuzz(data []byte) int {
@@ -75,7 +74,7 @@ func fuzz(data []byte, strictUnicode bool) int {
 			panic(fmt.Sprintf("%s: decode back error: %s\npickle: %q", subj, err, encoded))
 		}
 
-		if !reflect.DeepEqual(obj, obj2) {
+		if !deepEqual(obj, obj2) {
 			panic(fmt.Sprintf("%s: decode·encode != identity:\nhave: %#v\nwant: %#v", subj, obj2, obj))
 		}
 	}
