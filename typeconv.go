@@ -28,10 +28,10 @@ func AsInt64(x interface{}) (int64, error) {
 
 // AsBytes tries to represent unpickled value as Bytes.
 //
-// It succeeds only if the value is either Bytes, or ByteString.
+// It succeeds only if the value is either [Bytes], or [ByteString].
 // It does not succeed if the value is string or any other type.
 //
-// ByteString is treated related to Bytes because ByteString represents str
+// [ByteString] is treated related to [Bytes] because [ByteString] represents str
 // type from py2 which can contain both string and binary data.
 func AsBytes(x interface{}) (Bytes, error) {
 	switch x := x.(type) {
@@ -45,10 +45,10 @@ func AsBytes(x interface{}) (Bytes, error) {
 
 // AsString tries to represent unpickled value as string.
 //
-// It succeeds only if the value is either string, or ByteString.
-// It does not succeed if the value is Bytes or any other type.
+// It succeeds only if the value is either string, or [ByteString].
+// It does not succeed if the value is [Bytes] or any other type.
 //
-// ByteString is treated related to string because ByteString represents str
+// [ByteString] is treated related to string because [ByteString] represents str
 // type from py2 which can contain both string and binary data.
 func AsString(x interface{}) (string, error) {
 	switch x := x.(type) {

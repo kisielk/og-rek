@@ -22,10 +22,10 @@ import (
 // used as key, and all int(1), float64(1.0) and big.Int(1) are considered to be
 // equal.
 //
-// For strings, similarly to Python3, Bytes and string are considered to be not
+// For strings, similarly to Python3, [Bytes] and string are considered to be not
 // equal, even if their underlying content is the same. However with same
-// underlying content ByteString, because it represents str type from Python2,
-// is treated equal to both Bytes and string.
+// underlying content [ByteString], because it represents str type from Python2,
+// is treated equal to both [Bytes] and string.
 //
 // See PyDict mode documentation in top-level package overview for details.
 //
