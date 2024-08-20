@@ -138,8 +138,8 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Array, reflect.Slice:
 		if rv.Type().Elem().Kind() == reflect.Uint8 {
 			return e.encodeByteArray(rv.Bytes())
-		} else if _, ok := rv.Interface().(Tuple); ok {
-			return e.encodeTuple(rv.Interface().(Tuple))
+		} else if t, ok := rv.Interface().(Tuple); ok {
+			return e.encodeTuple(t)
 		} else {
 			return e.encodeArray(rv)
 		}
