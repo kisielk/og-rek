@@ -1,11 +1,11 @@
 // Package ogórek(*) is a library for decoding/encoding Python's pickle format.
 //
-// Use Decoder to decode a pickle from input stream, for example:
+// Use [Decoder] to decode a pickle from input stream, for example:
 //
 //	d := ogórek.NewDecoder(r)
 //	obj, err := d.Decode() // obj is interface{} representing decoded Python object
 //
-// Use Encoder to encode an object as pickle into output stream, for example:
+// Use [Encoder] to encode an object as pickle into output stream, for example:
 //
 //	e := ogórek.NewEncoder(w)
 //	err := e.Encode(obj)
@@ -36,7 +36,7 @@
 //      dict    ↔  map[any]any                       PyDict=n mode, default
 //              ←  ogórek.Dict
 //
-// With PyDict=y mode, however, Python dicts are decoded as ogórek.Dict which
+// With PyDict=y mode, however, Python dicts are decoded as [ogórek.Dict] which
 // mirrors behaviour of Python dict with respect to keys equality, and with
 // respect to which types are allowed to be used as keys.
 //
@@ -48,7 +48,7 @@
 // str and py2 unicode are decoded into string with py2 str being considered
 // as UTF-8 encoded. Correspondingly for protocol ≤ 2 Go string is encoded as
 // UTF-8 encoded py2 str, and for protocol ≥ 3 as py3 str / py2 unicode.
-// ogórek.ByteString can be used to produce bytestring objects after encoding
+// [ogórek.ByteString] can be used to produce bytestring objects after encoding
 // even for protocol ≥ 3. This mode tries to match Go string with str type of
 // target Python depending on protocol version, but looses information after
 // decoding/encoding cycle:
@@ -58,7 +58,7 @@
 //	py2 str      ←  ogórek.ByteString
 //
 // However with StrictUnicode=y mode there is 1-1 mapping in between py2
-// unicode / py3 str vs Go string, and between py2 str vs ogórek.ByteString.
+// unicode / py3 str vs Go string, and between py2 str vs [ogórek.ByteString].
 // In this mode decoding/encoding and encoding/decoding operations are always
 // identity with respect to strings:
 //
@@ -74,7 +74,7 @@
 //
 //
 //
-// Python classes and instances are mapped to Class and Call, for example:
+// Python classes and instances are mapped to [Class] and [Call], for example:
 //
 //	Python				Go
 //	------	   			--
@@ -127,7 +127,7 @@
 // how one in-RAM object can have a reference to another in-RAM object.
 //
 // When a pickle with such persistent reference is decoded, ogórek represents
-// the reference with Ref placeholder similarly to Class and Call. However it
+// the reference with [Ref] placeholder similarly to [Class] and [Call]. However it
 // is possible to hook into decoding and process such references in application
 // specific way, for example loading the referenced object from the database:
 //
@@ -152,7 +152,7 @@
 // expected to handle both with the same effect. To help handling decoded
 // values with such differences ogórek provides utilities that bring objects
 // to common type irregardless of which type variant was used in the pickle
-// stream. For example AsInt64 tries to represent unpickled value as int64 if
+// stream. For example [AsInt64] tries to represent unpickled value as int64 if
 // possible and errors if not.
 //
 // For strings the situation is similar, but a bit different.
@@ -160,20 +160,20 @@
 // bytes type. However on Python2 strings are bytestrings and could contain
 // both text and binary data. In the default mode py2 strings, the same way as
 // py2 unicode, are decoded into Go strings. However in StrictUnicode mode py2
-// strings are decoded into ByteString - the type specially dedicated to
+// strings are decoded into [ByteString] - the type specially dedicated to
 // represent them on Go side. There are two utilities to help programs handle
 // all those bytes/string data in the pickle stream in uniform way:
 //
-//     - the program should use AsString if it expects text   data -
+//     - the program should use [AsString] if it expects text   data -
 //       either unicode string, or byte string.
-//     - the program should use AsBytes  if it expects binary data -
+//     - the program should use [AsBytes]  if it expects binary data -
 //	 either bytes, or byte string.
 //
 // Using the helpers fits into Python3 strings/bytes model but also allows to
 // handle the data generated from under Python2.
 //
-// Similarly Dict considers ByteString to be equal to both string and Bytes
-// with the same underlying content. This allows programs to access Dict via
+// Similarly [Dict] considers [ByteString] to be equal to both string and [Bytes]
+// with the same underlying content. This allows programs to access [Dict] via
 // string/bytes keys following Python3 model, while still being able to handle
 // dictionaries generated from under Python2.
 //

@@ -168,7 +168,7 @@ type Decoder struct {
 	protocol int
 }
 
-// DecoderConfig allows to tune Decoder.
+// DecoderConfig allows to tune [Decoder].
 type DecoderConfig struct {
 	// PersistentLoad, if !nil, will be used by decoder to handle persistent references.
 	//
@@ -196,7 +196,7 @@ type DecoderConfig struct {
 	PyDict bool
 }
 
-// NewDecoder returns a new Decoder with the default configuration.
+// NewDecoder returns a new [Decoder] with the default configuration.
 //
 // The decoder will decode the pickle stream in r.
 func NewDecoder(r io.Reader) *Decoder {
@@ -634,7 +634,7 @@ func (d *Decoder) loadNone() error {
 // See https://docs.python.org/3/library/pickle.html#pickle-persistent for details.
 //
 // See DecoderConfig.PersistentLoad and EncoderConfig.PersistentRef for ways to
-// tune Decoder and Encoder to handle persistent references with user-specified
+// tune [Decoder] and [Encoder] to handle persistent references with user-specified
 // application logic.
 type Ref struct {
 	// persistent ID of referenced object.

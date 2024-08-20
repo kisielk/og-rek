@@ -31,7 +31,7 @@ type Encoder struct {
 	config *EncoderConfig
 }
 
-// EncoderConfig allows to tune Encoder.
+// EncoderConfig allows to tune [Encoder].
 type EncoderConfig struct {
 	// Protocol specifies which pickle protocol version should be used.
 	Protocol int
@@ -53,7 +53,7 @@ type EncoderConfig struct {
 	StrictUnicode bool
 }
 
-// NewEncoder returns a new Encoder with the default configuration.
+// NewEncoder returns a new [Encoder] with the default configuration.
 //
 // The encoder will emit pickle stream into w.
 func NewEncoder(w io.Writer) *Encoder {
@@ -63,7 +63,7 @@ func NewEncoder(w io.Writer) *Encoder {
 	})
 }
 
-// NewEncoderWithConfig is similar to NewEncoder, but returns the encoder with the specified configuration.
+// NewEncoderWithConfig is similar to [NewEncoder], but returns the encoder with the specified configuration.
 //
 // config must not be nil.
 func NewEncoderWithConfig(w io.Writer, config *EncoderConfig) *Encoder {
