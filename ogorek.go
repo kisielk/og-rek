@@ -515,10 +515,23 @@ func (d *Decoder) loadInt() error {
 		val = true
 	default:
 		i, err := strconv.ParseInt(string(line), 10, 64)
-		if err != nil {
-			return err
+		if err == nil {
+			val = i
+		} else {
+			e := err.(*strconv.NumError)
+			if e.Err != strconv.ErrRange {
+				return err
+			}
+
+			// integer that does not fit into int64 -> long
+			v := new(big.Int)
+			_, ok := v.SetString(string(line), 10)
+			if !ok {
+				// just in case (it should not fail)
+				return fmt.Errorf("pickle: loadInt: invalid string")
+			}
+			val = v
 		}
-		val = i
 	}
 
 	d.push(val)
