@@ -126,7 +126,16 @@ func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry 
 //
 // It should be used only if objectIn contains Go structs.
 func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
-	return TestEntry{name: name, objectIn: objectIn, objectOut: objectOut, picklev: picklev}
+	x := X(name, objectIn, picklev...)
+	x.objectOut = objectOut
+	return x
+}
+
+// Xloosy_uauto is like Xuauto but for Xloosy.
+func Xloosy_uauto(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
+	x := Xuauto(name, objectIn, picklev...)
+	x.objectOut = objectOut
+	return x
 }
 
 func I(input string) TestPickle { return TestPickle{protov: nil, data: input, err: nil} }
@@ -461,7 +470,7 @@ var tests = []TestEntry{
 
 	// loosy encode: decoding back gives another object.
 	// the only case where ogórek encoding is loosy is for Go struct types.
-	Xloosy("[]ogórek.foo{\"Qux\", 4}", []foo{{"Qux", 4}},
+	Xloosy_uauto("[]ogórek.foo{\"Qux\", 4}", []foo{{"Qux", 4}},
 		[]interface{}{map[interface{}]interface{}{"Foo": "Qux", "Bar": int64(4)}},
 
 		// MARK + STRING + INT + DICT + LIST
