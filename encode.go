@@ -121,9 +121,9 @@ func (e *Encoder) encode(rv reflect.Value) error {
 	case reflect.Bool:
 		return e.encodeBool(rv.Bool())
 	case reflect.Int, reflect.Int8, reflect.Int64, reflect.Int32, reflect.Int16:
-		return e.encodeInt(reflect.Int, rv.Int())
+		return e.encodeInt(rv.Int())
 	case reflect.Uint8, reflect.Uint64, reflect.Uint, reflect.Uint32, reflect.Uint16:
-		return e.encodeInt(reflect.Uint, int64(rv.Uint()))
+		return e.encodeUint(rv.Uint())
 	case reflect.String:
 		switch rv.Interface().(type) {
 		case unicode:
@@ -434,9 +434,7 @@ func (e *Encoder) encodeFloat(f float64) error {
 	return e.emitf("%c%g\n", opFloat, f)
 }
 
-func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
-	// FIXME: need support for 64-bit ints
-
+func (e *Encoder) encodeInt(i int64) error {
 	// protocol >= 1: BININT*
 	if e.config.Protocol >= 1 {
 		switch {
@@ -455,6 +453,16 @@ func (e *Encoder) encodeInt(k reflect.Kind, i int64) error {
 
 	// protocol 0: INT
 	return e.emitf("%c%d\n", opInt, i)
+}
+
+func (e *Encoder) encodeUint(u uint64) error {
+	if u <= math.MaxInt64 {
+		return e.encodeInt(int64(u))
+	}
+
+	// u > math.MaxInt64 and cannot be represented as int64
+	// emit it as text INT
+	return e.emitf("%c%d\n", opInt, u)
 }
 
 func (e *Encoder) encodeLong(b *big.Int) error {

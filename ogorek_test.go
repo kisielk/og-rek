@@ -78,8 +78,8 @@ type TestEntry struct {
 	// object(s) and []TestPickle. All pickles must decode to objectOut.
 	// Encoding objectIn at particular protocol must give particular TestPickle.
 	//
-	// In the usual case objectIn == objectOut and they can only differ if
-	// objectIn contains a Go struct.
+	// In the usual case objectIn == objectOut and they can differ if
+	// e.g. objectIn contains a Go struct.
 	objectIn  interface{}
 	picklev   []TestPickle
 	objectOut interface{}
@@ -123,8 +123,6 @@ func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry 
 }
 
 // Xloosy is syntactic sugar to prepare one TestEntry with loosy encoding.
-//
-// It should be used only if objectIn contains Go structs.
 func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
 	x := X(name, objectIn, picklev...)
 	x.objectOut = objectOut
@@ -224,9 +222,33 @@ var tests = []TestEntry{
 		P0("I74565\n."),            // INT
 		P1_("J\x45\x23\x01\x00.")), // BININT
 
+	X("int(0x7fffffff)", int64(0x7fffffff),
+		P0("I2147483647\n."),       // INT
+		P1_("J\xff\xff\xff\x7f.")), // BININT
+
 	X("int(-7)", int64(-7),
 		P0("I-7\n."),               // INT
 		P1_("J\xf9\xff\xff\xff.")), // BININT
+
+	X("int(-0x80000000)", int64(-0x80000000),
+		P0("I-2147483648\n."),      // INT
+		P1_("J\x00\x00\x00\x80.")), // BININT
+
+	X("int(0x1234ffffffff)", int64(0x1234ffffffff),
+		P0_("I20018842566655\n.")), // INT
+
+	X("int(0x7fffffffffffffff)", int64(0x7fffffffffffffff),
+		P0_("I9223372036854775807\n.")), // INT
+
+	Xloosy("uint(0)", uint64(0), int64(0),
+		P0("I0\n."),    // INT
+		P1_("K\x00.")), // BININT
+
+	Xloosy("uint(0x80000000ffffffff)", uint64(0x80000000ffffffff), bigInt("9223372041149743103"),
+		P0_("I9223372041149743103\n.")), // INT
+
+	Xloosy("uint(0xffffffffffffffff)", uint64(0xffffffffffffffff), bigInt("18446744073709551615"),
+		P0_("I18446744073709551615\n.")), // INT
 
 	X("float", float64(1.23),
 		P0("F1.23\n."),                    // FLOAT
