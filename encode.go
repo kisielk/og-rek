@@ -505,6 +505,41 @@ func (e *Encoder) encodeMap(m reflect.Value) error {
 	return e.emit(opDict)
 }
 
+func (e *Encoder) encodeDict(d Dict) error {
+	l := d.Len()
+
+	// protocol >= 1: ø dict -> EMPTY_DICT
+	if e.config.Protocol >= 1 && l == 0 {
+		return e.emit(opEmptyDict)
+	}
+
+	// MARK + ... + DICT
+	// TODO cycles + sort keys (see encodeMap for details)
+	err := e.emit(opMark)
+	if err != nil {
+		return err
+	}
+
+	d.Iter()(func(k, v any) bool {
+		err = e.encode(reflectValueOf(k))
+		if err != nil {
+			return false
+		}
+
+		err = e.encode(reflectValueOf(v))
+		if err != nil {
+			return false
+		}
+
+		return true
+	})
+	if err != nil {
+		return err
+	}
+
+	return e.emit(opDict)
+}
+
 func (e *Encoder) encodeCall(v *Call) error {
 	err := e.encodeClass(&v.Callable)
 	if err != nil {
@@ -578,6 +613,8 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 		return e.encodeRef(&v)
 	case big.Int:
 		return e.encodeLong(&v)
+	case Dict:
+		return e.encodeDict(v)
 	}
 
 	structTags := getStructTags(st)

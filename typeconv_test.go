@@ -45,7 +45,7 @@ func TestAsInt64(t *testing.T) {
 			}
 		}
 
-		if !reflect.DeepEqual(out, tt.outOK) {
+		if !deepEqual(out, tt.outOK) {
 			t.Errorf("%T %#v -> %T %#v  ; want %T %#v",
 				tt.in, tt.in, out, out, tt.outOK, tt.outOK)
 		}
@@ -100,12 +100,12 @@ func TestAsBytesString(t *testing.T) {
 			serrOK = Estring(tt.in)
 		}
 
-		if !(bout == boutOK && reflect.DeepEqual(berr, berrOK)) {
+		if !(bout == boutOK && deepEqual(berr, berrOK)) {
 			t.Errorf("%#v: AsBytes:\nhave %#v %#v\nwant %#v %#v",
 				tt.in, bout, berr, boutOK, berrOK)
 		}
 
-		if !(sout == soutOK && reflect.DeepEqual(serr, serrOK)) {
+		if !(sout == soutOK && deepEqual(serr, serrOK)) {
 			t.Errorf("%#v: AsString:\nhave %#v %#v\nwant %#v %#v",
 				tt.in, sout, serr, soutOK, serrOK)
 		}

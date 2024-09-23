@@ -189,6 +189,11 @@ type DecoderConfig struct {
 	// decoded into ByteString in this mode. See StrictUnicode mode
 	// documentation in top-level package overview for details.
 	StrictUnicode bool
+
+	// PyDict, when true, requests to decode Python dicts as ogórek.Dict
+	// instead of builtin map. See PyDict mode documentation in top-level
+	// package overview for details.
+	PyDict bool
 }
 
 // NewDecoder returns a new Decoder with the default configuration.
@@ -1009,29 +1014,75 @@ func mapTryAssign(m map[interface{}]interface{}, key, value interface{}) (ok boo
 	return
 }
 
+// dictTryAssign is like mapTryAssign but for Dict.
+func dictTryAssign(d Dict, key, value interface{}) (ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			ok = false
+		}
+	}()
+
+	d.Set(key, value)
+	ok = true
+	return
+}
+
 func (d *Decoder) loadDict() error {
 	k, err := d.marker()
 	if err != nil {
 		return err
 	}
 
-	m := make(map[interface{}]interface{}, 0)
 	items := d.stack[k+1:]
 	if len(items) % 2 != 0 {
 		return fmt.Errorf("pickle: loadDict: odd # of elements")
 	}
-	for i := 0; i < len(items); i += 2 {
-		key := items[i]
-		if !mapTryAssign(m, key, items[i+1]) {
-			return fmt.Errorf("pickle: loadDict: invalid key type %T", key)
-		}
+
+	var m interface{}
+	if d.config.PyDict {
+		m, err = d.loadDictDict(items)
+	} else {
+		m, err = d.loadDictMap(items)
 	}
+
+	if err != nil {
+		return err
+	}
+
 	d.stack = append(d.stack[:k], m)
 	return nil
 }
 
+func (d *Decoder) loadDictMap(items []interface{}) (map[interface{}]interface{}, error) {
+	m := make(map[interface{}]interface{}, len(items)/2)
+	for i := 0; i < len(items); i += 2 {
+		key := items[i]
+		if !mapTryAssign(m, key, items[i+1]) {
+			return nil, fmt.Errorf("pickle: loadDict: map: invalid key type %T", key)
+		}
+	}
+	return m, nil
+}
+
+func (d *Decoder) loadDictDict(items []interface{}) (Dict, error) {
+	m := NewDictWithSizeHint(len(items)/2)
+	for i := 0; i < len(items); i += 2 {
+		key := items[i]
+		if !dictTryAssign(m, key, items[i+1]) {
+			return Dict{}, fmt.Errorf("pickle: loadDict: Dict: invalid key type %T", key)
+		}
+	}
+	return m, nil
+}
+
+
 func (d *Decoder) loadEmptyDict() error {
-	m := make(map[interface{}]interface{}, 0)
+	var m interface{}
+	if d.config.PyDict {
+		m = NewDict()
+	} else {
+		m = make(map[interface{}]interface{}, 0)
+	}
 	d.push(m)
 	return nil
 }
@@ -1218,10 +1269,14 @@ func (d *Decoder) loadSetItem() error {
 	switch m := m.(type) {
 	case map[interface{}]interface{}:
 		if !mapTryAssign(m, k, v) {
-			return fmt.Errorf("pickle: loadSetItem: invalid key type %T", k)
+			return fmt.Errorf("pickle: loadSetItem: map: invalid key type %T", k)
+		}
+	case Dict:
+		if !dictTryAssign(m, k, v) {
+			return fmt.Errorf("pickle: loadSetItem: Dict: invalid key type %T", k)
 		}
 	default:
-		return fmt.Errorf("pickle: loadSetItem: expected a map, got %T", m)
+		return fmt.Errorf("pickle: loadSetItem: expected a map or Dict, got %T", m)
 	}
 	return nil
 }
@@ -1234,23 +1289,31 @@ func (d *Decoder) loadSetItems() error {
 	if k < 1 {
 		return errStackUnderflow
 	}
+	if (len(d.stack) - (k + 1)) % 2 != 0 {
+		return fmt.Errorf("pickle: loadSetItems: odd # of elements")
+	}
 
 	l := d.stack[k-1]
 	switch m := l.(type) {
 	case map[interface{}]interface{}:
-		if (len(d.stack) - (k + 1)) % 2 != 0 {
-			return fmt.Errorf("pickle: loadSetItems: odd # of elements")
-		}
 		for i := k + 1; i < len(d.stack); i += 2 {
 			key := d.stack[i]
 			if !mapTryAssign(m, key, d.stack[i+1]) {
-				return fmt.Errorf("pickle: loadSetItems: invalid key type %T", key)
+				return fmt.Errorf("pickle: loadSetItems: map: invalid key type %T", key)
 			}
 		}
-		d.stack = append(d.stack[:k-1], m)
+	case Dict:
+		for i := k + 1; i < len(d.stack); i += 2 {
+			key := d.stack[i]
+			if !dictTryAssign(m, key, d.stack[i+1]) {
+				return fmt.Errorf("pickle: loadSetItems: Dict: invalid key type %T", key)
+			}
+		}
+
 	default:
-		return fmt.Errorf("pickle: loadSetItems: expected a map, got %T", m)
+		return fmt.Errorf("pickle: loadSetItems: expected a map or Dict, got %T", m)
 	}
+	d.stack = append(d.stack[:k-1], l)
 	return nil
 }
 
