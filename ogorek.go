@@ -127,7 +127,7 @@ type mark struct{}
 type None struct{}
 
 // Tuple is a representation of Python's tuple.
-type Tuple []interface{}
+type Tuple []any
 
 // Bytes represents Python's bytes.
 type Bytes string
@@ -154,8 +154,8 @@ func (v unicode) GoString() string {
 type Decoder struct {
 	r      *bufio.Reader
 	config *DecoderConfig
-	stack  []interface{}
-	memo   map[string]interface{}
+	stack  []any
+	memo   map[string]any
 
 	// a reusable buffer that can be used by the various decoding functions
 	// functions using this should call buf.Reset to clear the old contents
@@ -182,7 +182,7 @@ type DecoderConfig struct {
 	// equivalent-to-type Go ghost object, e.g. equivalent to zodb.BTree.
 	//
 	// See Ref documentation for more details.
-	PersistentLoad func(ref Ref) (interface{}, error)
+	PersistentLoad func(ref Ref) (any, error)
 
 	// StrictUnicode, when true, requests to decode to Go string only
 	// Python unicode objects. Python2 bytestrings (py2 str type) are
@@ -211,14 +211,14 @@ func NewDecoderWithConfig(r io.Reader, config *DecoderConfig) *Decoder {
 	return &Decoder{
 		r:        reader,
 		config:   config,
-		stack:    make([]interface{}, 0),
-		memo:     make(map[string]interface{}),
+		stack:    make([]any, 0),
+		memo:     make(map[string]any),
 		protocol: 0,
 	}
 }
 
 // Decode decodes the pickle stream and returns the result or an error.
-func (d *Decoder) Decode() (interface{}, error) {
+func (d *Decoder) Decode() (any, error) {
 
 	insn := 0
 loop:
@@ -303,7 +303,7 @@ loop:
 		case opList:
 			err = d.loadList()
 		case opEmptyList:
-			d.push([]interface{}{})
+			d.push([]any{})
 		case opObj:
 			err = d.obj()
 		case opPut:
@@ -411,7 +411,7 @@ func (d *Decoder) readLine() ([]byte, error) {
 // userOK tells whether it is ok to return all objects to user.
 //
 // for example it is not ok to return the mark object.
-func userOK(objv ...interface{}) error {
+func userOK(objv ...any) error {
 	for _, obj := range objv {
 		switch obj.(type) {
 		case mark:
@@ -439,13 +439,13 @@ func (d *Decoder) marker() (int, error) {
 }
 
 // Append a new value
-func (d *Decoder) push(v interface{}) {
+func (d *Decoder) push(v any) {
 	d.stack = append(d.stack, v)
 }
 
 // Pop a value
 // The returned error is errStackUnderflow if decoder stack is empty
-func (d *Decoder) pop() (interface{}, error) {
+func (d *Decoder) pop() (any, error) {
 	ln := len(d.stack) - 1
 	if ln < 0 {
 		return nil, errStackUnderflow
@@ -456,7 +456,7 @@ func (d *Decoder) pop() (interface{}, error) {
 }
 
 // Pop a value (when you know for sure decoder stack is not empty)
-func (d *Decoder) xpop() interface{} {
+func (d *Decoder) xpop() any {
 	v, err := d.pop()
 	if err != nil {
 		panic(err)
@@ -465,7 +465,7 @@ func (d *Decoder) xpop() interface{} {
 }
 
 // popUser pops stack value and checks whether it is ok to return to user.
-func (d *Decoder) popUser() (interface{}, error) {
+func (d *Decoder) popUser() (any, error) {
 	v, err := d.pop()
 	if err != nil {
 		return nil, err
@@ -511,7 +511,7 @@ func (d *Decoder) loadInt() error {
 		return err
 	}
 
-	var val interface{}
+	var val any
 
 	switch string(line) {
 	case opFalse[1:3]:
@@ -641,7 +641,7 @@ type Ref struct {
 	//
 	// used to be string for protocol 0, but "upgraded" to be arbitrary
 	// object for later protocols.
-	Pid interface{}
+	Pid any
 }
 
 // Push a persistent object id
@@ -950,8 +950,8 @@ func (d *Decoder) loadAppend() error {
 		return err
 	}
 	switch l.(type) {
-	case []interface{}:
-		l := l.([]interface{})
+	case []any:
+		l := l.([]any)
 		d.stack[len(d.stack)-1] = append(l, v)
 	default:
 		return fmt.Errorf("pickle: loadAppend: expected a list, got %T", l)
@@ -987,7 +987,7 @@ func (d *Decoder) global() error {
 //
 // It checks whether key is of appropriate type, and if yes - succeeds.
 // If key is not appropriate - the map stays unchanged and false is returned.
-func mapTryAssign(m map[interface{}]interface{}, key, value interface{}) (ok bool) {
+func mapTryAssign(m map[any]any, key, value any) (ok bool) {
 	// use panic/recover to detect inappropriate keys.
 	//
 	// We could try to use reflect.TypeOf(key).Comparable() instead, but that
@@ -1015,7 +1015,7 @@ func mapTryAssign(m map[interface{}]interface{}, key, value interface{}) (ok boo
 }
 
 // dictTryAssign is like mapTryAssign but for Dict.
-func dictTryAssign(d Dict, key, value interface{}) (ok bool) {
+func dictTryAssign(d Dict, key, value any) (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			ok = false
@@ -1038,7 +1038,7 @@ func (d *Decoder) loadDict() error {
 		return fmt.Errorf("pickle: loadDict: odd # of elements")
 	}
 
-	var m interface{}
+	var m any
 	if d.config.PyDict {
 		m, err = d.loadDictDict(items)
 	} else {
@@ -1053,8 +1053,8 @@ func (d *Decoder) loadDict() error {
 	return nil
 }
 
-func (d *Decoder) loadDictMap(items []interface{}) (map[interface{}]interface{}, error) {
-	m := make(map[interface{}]interface{}, len(items)/2)
+func (d *Decoder) loadDictMap(items []any) (map[any]any, error) {
+	m := make(map[any]any, len(items)/2)
 	for i := 0; i < len(items); i += 2 {
 		key := items[i]
 		if !mapTryAssign(m, key, items[i+1]) {
@@ -1064,7 +1064,7 @@ func (d *Decoder) loadDictMap(items []interface{}) (map[interface{}]interface{},
 	return m, nil
 }
 
-func (d *Decoder) loadDictDict(items []interface{}) (Dict, error) {
+func (d *Decoder) loadDictDict(items []any) (Dict, error) {
 	m := NewDictWithSizeHint(len(items)/2)
 	for i := 0; i < len(items); i += 2 {
 		key := items[i]
@@ -1077,11 +1077,11 @@ func (d *Decoder) loadDictDict(items []interface{}) (Dict, error) {
 
 
 func (d *Decoder) loadEmptyDict() error {
-	var m interface{}
+	var m any
 	if d.config.PyDict {
 		m = NewDict()
 	} else {
-		m = make(map[interface{}]interface{}, 0)
+		m = make(map[any]any, 0)
 	}
 	d.push(m)
 	return nil
@@ -1098,8 +1098,8 @@ func (d *Decoder) loadAppends() error {
 
 	l := d.stack[k-1]
 	switch l.(type) {
-	case []interface{}:
-		l := l.([]interface{})
+	case []any:
+		l := l.([]any)
 		for _, v := range d.stack[k+1 : len(d.stack)] {
 			l = append(l, v)
 		}
@@ -1167,7 +1167,7 @@ func (d *Decoder) loadList() error {
 		return err
 	}
 
-	v := append([]interface{}{}, d.stack[k+1:]...)
+	v := append([]any{}, d.stack[k+1:]...)
 	d.stack = append(d.stack[:k], v)
 	return nil
 }
@@ -1267,7 +1267,7 @@ func (d *Decoder) loadSetItem() error {
 	}
 	m := d.stack[len(d.stack)-1]
 	switch m := m.(type) {
-	case map[interface{}]interface{}:
+	case map[any]any:
 		if !mapTryAssign(m, k, v) {
 			return fmt.Errorf("pickle: loadSetItem: map: invalid key type %T", k)
 		}
@@ -1295,7 +1295,7 @@ func (d *Decoder) loadSetItems() error {
 
 	l := d.stack[k-1]
 	switch m := l.(type) {
-	case map[interface{}]interface{}:
+	case map[any]any:
 		for i := k + 1; i < len(d.stack); i += 2 {
 			key := d.stack[i]
 			if !mapTryAssign(m, key, d.stack[i+1]) {
@@ -1478,7 +1478,7 @@ func decodeLong(data string) (*big.Int, error) {
 //
 // Python uses such representation of bytes for protocols <= 2 - where there is
 // no BYTES* opcodes.
-func decodeLatin1Bytes(arg interface{}) ([]byte, error) {
+func decodeLatin1Bytes(arg any) ([]byte, error) {
 	// bytes as latin1-decoded unicode
 	ulatin1, ok := arg.(string)
 	if !ok {

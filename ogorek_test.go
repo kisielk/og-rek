@@ -45,13 +45,13 @@ func hexInput(hexdata string) TestPickle {
 }
 
 var graphitePickle1 = hexInput("80025d71017d710228550676616c75657371035d71042847407d90000000000047407f100000000000474080e0000000000047409764000000000047409c40000000000047409d88000000000047409f74000000000047409c74000000000047409cdc00000000004740a10000000000004740a0d800000000004740938800000000004740a00e00000000004740988800000000004e4e655505737461727471054a00d87a5255047374657071064a805101005503656e6471074a00f08f5255046e616d657108552d5a5a5a5a2e55555555555555552e43434343434343432e4d4d4d4d4d4d4d4d2e5858585858585858582e545454710975612e")
-var graphiteObject1 = []interface{}{map[interface{}]interface{}{"values": []interface{}{float64(473), float64(497), float64(540), float64(1497), float64(1808), float64(1890), float64(2013), float64(1821), float64(1847), float64(2176), float64(2156), float64(1250), float64(2055), float64(1570), None{}, None{}}, "start": int64(1383782400), "step": int64(86400), "end": int64(1385164800), "name": "ZZZZ.UUUUUUUU.CCCCCCCC.MMMMMMMM.XXXXXXXXX.TTT"}}
+var graphiteObject1 = []any{map[any]any{"values": []any{float64(473), float64(497), float64(540), float64(1497), float64(1808), float64(1890), float64(2013), float64(1821), float64(1847), float64(2176), float64(2156), float64(1250), float64(2055), float64(1570), None{}, None{}}, "start": int64(1383782400), "step": int64(86400), "end": int64(1385164800), "name": "ZZZZ.UUUUUUUU.CCCCCCCC.MMMMMMMM.XXXXXXXXX.TTT"}}
 
 var graphitePickle2 = hexInput("286c70300a286470310a53277374617274270a70320a49313338333738323430300a73532773746570270a70330a4938363430300a735327656e64270a70340a49313338353136343830300a73532776616c756573270a70350a286c70360a463437332e300a61463439372e300a61463534302e300a6146313439372e300a6146313830382e300a6146313839302e300a6146323031332e300a6146313832312e300a6146313834372e300a6146323137362e300a6146323135362e300a6146313235302e300a6146323035352e300a6146313537302e300a614e614e617353276e616d65270a70370a5327757365722e6c6f67696e2e617265612e6d616368696e652e6d65747269632e6d696e757465270a70380a73612e")
-var graphiteObject2 = []interface{}{map[interface{}]interface{}{"values": []interface{}{float64(473), float64(497), float64(540), float64(1497), float64(1808), float64(1890), float64(2013), float64(1821), float64(1847), float64(2176), float64(2156), float64(1250), float64(2055), float64(1570), None{}, None{}}, "start": int64(1383782400), "step": int64(86400), "end": int64(1385164800), "name": "user.login.area.machine.metric.minute"}}
+var graphiteObject2 = []any{map[any]any{"values": []any{float64(473), float64(497), float64(540), float64(1497), float64(1808), float64(1890), float64(2013), float64(1821), float64(1847), float64(2176), float64(2156), float64(1250), float64(2055), float64(1570), None{}, None{}}, "start": int64(1383782400), "step": int64(86400), "end": int64(1385164800), "name": "user.login.area.machine.metric.minute"}}
 
 var graphitePickle3 = hexInput("286c70310a286470320a5327696e74657276616c73270a70330a286c70340a7353276d65747269635f70617468270a70350a5327636172626f6e2e6167656e7473270a70360a73532769734c656166270a70370a4930300a7361286470380a67330a286c70390a7367350a5327636172626f6e2e61676772656761746f72270a7031300a7367370a4930300a736128647031310a67330a286c7031320a7367350a5327636172626f6e2e72656c617973270a7031330a7367370a4930300a73612e")
-var graphiteObject3 = []interface{}{map[interface{}]interface{}{"intervals": []interface{}{}, "metric_path": "carbon.agents", "isLeaf": false}, map[interface{}]interface{}{"intervals": []interface{}{}, "metric_path": "carbon.aggregator", "isLeaf": false}, map[interface{}]interface{}{"intervals": []interface{}{}, "metric_path": "carbon.relays", "isLeaf": false}}
+var graphiteObject3 = []any{map[any]any{"intervals": []any{}, "metric_path": "carbon.agents", "isLeaf": false}, map[any]any{"intervals": []any{}, "metric_path": "carbon.aggregator", "isLeaf": false}, map[any]any{"intervals": []any{}, "metric_path": "carbon.relays", "isLeaf": false}}
 
 const longLine = "28,34,30,55,100,130,87,169,194,202,232,252,267,274,286,315,308,221,358,368,401,406,434,452,475,422,497,530,517,559,400,418,571,578,599,600,625,630,635,647,220,715,736,760,705,785,794,495,808,852,861,863,869,875,890,893,896,922,812,980,1074,1087,1145,1153,1163,1171,445,1195,1203,1242,1255,1274,52,1287,1319,636,1160,1339,1345,1353,1369,1391,1396,1405,1221,1410,1431,1451,1460,1470,1472,1492,1517,1528,419,1530,1532,1535,1573,1547,1574,1437,1594,1595,847,1551,983,1637,1647,1666,1672,1691,1726,1515,1731,1739,1741,1723,1776,1685,505,1624,1436,1890,728,1910,1931,1544,2013,2025,2030,2043,2069,1162,2129,2160,2199,2210,1911,2246,804,2276,1673,2299,2315,2322,2328,2355,2376,2405,1159,2425,2430,2452,1804,2442,2567,2577,1167,2611,2534,1879,2623,2682,2699,2652,2742,2754,2774,2782,2795,2431,2821,2751,2850,2090,513,2898,592,2932,2933,1555,2969,3003,3007,3010,2595,3064,3087,3105,3106,3110,151,3129,3132,304,3173,3205,3233,3245,3279,3302,3307,714,316,3331,3347,3360,3375,3380,3442,2620,3482,3493,3504,3516,3517,3518,3533,3511,2681,3530,3601,3606,3615,1210,3633,3651,3688,3690,3781,1907,3839,3840,3847,3867,3816,3899,3924,2345,3912,3966,982,4040,4056,4076,4084,4105,2649,4171,3873,1415,3567,4188,4221,4227,4231,2279,4250,4253,770,894,4343,4356,4289,4404,4438,2572,3124,4334,2114,3953,4522,4537,4561,4571,641,4629,4640,4664,4687,4702,4709,4740,4605,4746,4768,3856,3980,4814,2984,4895,4908,1249,4944,4947,4979,4988,4995,32,4066,5043,4956,5069,5072,5076,5084,5085,5137,4262,5152,479,5156,3114,1277,5183,5186,1825,5106,5216,963,5239,5252,5218,5284,1980,1972,5352,5364,5294,5379,5387,5391,5397,5419,5434,5468,5471,3350,5510,5522,5525,5538,5554,5573,5597,5610,5615,5624,842,2851,5641,5655,5656,5658,5678,5682,5696,5699,5709,5728,5753,851,5805,3528,5822,801,5855,2929,5871,5899,5918,5925,5927,5931,5935,5939,5958,778,5971,5980,5300,6009,6023,6030,6032,6016,6110,5009,6155,6197,1760,6253,6267,4886,5608,6289,6308,6311,6321,6316,6333,6244,6070,6349,6353,6186,6357,6366,6386,6387,6389,6399,6411,6421,6432,6437,6465,6302,6493,5602,6511,6529,6536,6170,6557,6561,6577,6581,6590,5290,5649,6231,6275,6635,6651,6652,5929,6692,6693,6695,6705,6711,6723,6738,6752,6753,3629,2975,6790,5845,338,6814,6826,6478,6860,6872,6882,880,356,6897,4102,6910,6611,1030,6934,6936,6987,6984,6999,827,6902,7027,7049,7051,4628,7084,7083,7071,7102,7137,5867,7152,6048,2410,3896,7168,7177,7224,6606,7233,1793,7261,7284,7290,7292,5212,7315,6964,3238,355,1969,4256,448,7325,908,2824,2981,3193,3363,3613,5325,6388,2247,1348,72,131,5414,7285,7343,7349,7362,7372,7381,7410,7418,7443,5512,7470,7487,7497,7516,7277,2622,2863,945,4344,3774,1024,2272,7523,4476,256,5643,3164,7539,7540,7489,1932,7559,7575,7602,7605,7609,7608,7619,7204,7652,7663,6907,7672,7654,7674,7687,7718,7745,1202,4030,7797,7801,7799,2924,7871,7873,7900,7907,7911,7912,7917,7923,7935,8007,8017,7636,8084,8087,3686,8114,8153,8158,8171,8175,8182,8205,8222,8225,8229,8232,8234,8244,8247,7256,8279,6929,8285,7040,8328,707,6773,7949,8468,5759,6344,8509,1635"
 
@@ -79,9 +79,9 @@ type TestEntry struct {
 	//
 	// In the usual case objectIn == objectOut and they can differ if
 	// e.g. objectIn contains a Go struct.
-	objectIn  interface{}
+	objectIn  any
 	picklev   []TestPickle
-	objectOut interface{}
+	objectOut any
 
 	strictUnicodeN bool // whether to test with StrictUnicode=n while decoding/encoding
 	strictUnicodeY bool // whether to test with StrictUnicode=y while decoding/encoding
@@ -105,35 +105,35 @@ type TestEntry struct {
 // X is syntactic sugar to prepare one TestEntry.
 //
 // the entry is tested under both StrictUnicode=n and StrictUnicode=y modes.
-func X(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func X(name string, object any, picklev ...TestPickle) TestEntry {
 	return TestEntry{name: name, objectIn: object, objectOut: object, picklev: picklev,
 			 strictUnicodeN: true, strictUnicodeY: true,
 			 pyDictN: true, pyDictY: true}
 }
 
 // Xuauto is syntactic sugar to prepare one TestEntry that is tested only under StrictUnicode=n mode.
-func Xuauto(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xuauto(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.strictUnicodeY = false
 	return x
 }
 
 // Xustrict is syntactic sugar to prepare one TestEntry that is tested only under StrictUnicode=y mode.
-func Xustrict(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xustrict(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.strictUnicodeN = false
 	return x
 }
 
 // Xdgo is syntactic sugar to prepare one TestEntry that is tested only under PyDict=n mode.
-func Xdgo(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xdgo(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.pyDictY = false
 	return x
 }
 
 // Xdpy is syntactic sugar to prepare one TestEntry that is tested only under PyDict=y mode.
-func Xdpy(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xdpy(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.pyDictN = false
 	return x
@@ -141,7 +141,7 @@ func Xdpy(name string, object interface{}, picklev ...TestPickle) TestEntry {
 
 // Xuauto_dgo is syntactic sugar to prepare one TestEntry that is tested only
 // under StrictUnicode=n ^ pyDict=n mode.
-func Xuauto_dgo(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xuauto_dgo(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.strictUnicodeY = false
 	x.pyDictY = false
@@ -150,7 +150,7 @@ func Xuauto_dgo(name string, object interface{}, picklev ...TestPickle) TestEntr
 
 // Xuauto_dpy is syntactic sugar to prepare one TestEntry that is tested only
 // under StrictUnicode=n ^ pyDict=y mode.
-func Xuauto_dpy(name string, object interface{}, picklev ...TestPickle) TestEntry {
+func Xuauto_dpy(name string, object any, picklev ...TestPickle) TestEntry {
 	x := X(name, object, picklev...)
 	x.strictUnicodeY = false
 	x.pyDictN = false
@@ -158,14 +158,14 @@ func Xuauto_dpy(name string, object interface{}, picklev ...TestPickle) TestEntr
 }
 
 // Xloosy is syntactic sugar to prepare one TestEntry with loosy encoding.
-func Xloosy(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
+func Xloosy(name string, objectIn, objectOut any, picklev ...TestPickle) TestEntry {
 	x := X(name, objectIn, picklev...)
 	x.objectOut = objectOut
 	return x
 }
 
 // Xloosy_uauto_dgo is like Xuauto_dgo but for Xloosy.
-func Xloosy_uauto_dgo(name string, objectIn, objectOut interface{}, picklev ...TestPickle) TestEntry {
+func Xloosy_uauto_dgo(name string, objectIn, objectOut any, picklev ...TestPickle) TestEntry {
 	x := Xuauto_dgo(name, objectIn, picklev...)
 	x.objectOut = objectOut
 	return x
@@ -174,8 +174,8 @@ func Xloosy_uauto_dgo(name string, objectIn, objectOut interface{}, picklev ...T
 func I(input string) TestPickle { return TestPickle{protov: nil, data: input, err: nil} }
 
 // PP(protov) creates func PX(pickle) which in turn produces TestPickle{protocol: protov, pickle}.
-func PP(protov ...int) func(xpickle interface{}) TestPickle {
-	return func(xpickle interface{}) TestPickle {
+func PP(protov ...int) func(xpickle any) TestPickle {
+	return func(xpickle any) TestPickle {
 		t := TestPickle{protov: protov}
 		switch x := xpickle.(type) {
 		case string:
@@ -322,12 +322,12 @@ var tests = []TestEntry{
 		P2_("K\x01K\x02\x86K\x03K\x04\x86\x86."), // BININT1 + TUPLE2
 		I("((I1\nI2\ntp0\n(I3\nI4\ntp1\ntp2\n.")),
 
-	X("list([])", []interface{}{},
+	X("list([])", []any{},
 		P0("(l."), // MARK + LIST
 		P1_("]."), // EMPTY_LIST
 		I("(lp0\n.")),
 
-	X("list([1,2,3,True])", []interface{}{int64(1), int64(2), int64(3), true},
+	X("list([1,2,3,True])", []any{int64(1), int64(2), int64(3), true},
 		P0("(I1\nI2\nI3\nI01\nl."),    // MARK + INT + INT(True) + LIST
 		P1("(K\x01K\x02K\x03I01\nl."), // MARK + BININT1 + INT(True) + LIST
 		P2_("(K\x01K\x02K\x03\x88l."), // MARK + BININT1 + NEW_TRUE + LIST
@@ -453,18 +453,18 @@ var tests = []TestEntry{
 
 	// dicts in default PyDict=n mode
 
-	Xdgo("dict({})", make(map[interface{}]interface{}),
+	Xdgo("dict({})", make(map[any]any),
 		P0("(d."), // MARK + DICT
 		P1_("}."), // EMPTY_DICT
 		I("(dp0\n.")),
 
-	Xuauto_dgo("dict({'a': '1'})", map[interface{}]interface{}{"a": "1"},
+	Xuauto_dgo("dict({'a': '1'})", map[any]any{"a": "1"},
 		P0("(S\"a\"\nS\"1\"\nd."),                     // MARK + STRING + DICT
 		P12("(U\x01aU\x011d."),                        // MARK + SHORT_BINSTRING + DICT
 		P3("(X\x01\x00\x00\x00aX\x01\x00\x00\x001d."), // MARK + BINUNICODE + DICT
 		P4_("(\x8c\x01a\x8c\x011d.")),                 // MARK + SHORT_BINUNICODE + DICT
 
-	Xuauto_dgo("dict({'a': '1', 'b': '2'})", map[interface{}]interface{}{"a": "1", "b": "2"},
+	Xuauto_dgo("dict({'a': '1', 'b': '2'})", map[any]any{"a": "1", "b": "2"},
 		// map iteration order is not stable - test only decoding
 		I("(S\"a\"\nS\"1\"\nS\"b\"\nS\"2\"\nd."), // P0: MARK + STRING + DICT
 		I("(U\x01aU\x011U\x01bU\x012d."),         // P12: MARK + SHORT_BINSTRING + DICT
@@ -527,7 +527,7 @@ var tests = []TestEntry{
 		P0123(errP0123GlobalStringLineOnly),
 		P4_("\x8c\x05foo\n2\x8c\x03bar\x93.")), // SHORT_BINUNICODE + STACK_GLOBAL
 
-	Xuauto(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []interface{}{"bing"}},
+	Xuauto(`foo.bar("bing")  # global + reduce`, Call{Callable: Class{Module: "foo", Name: "bar"}, Args: []any{"bing"}},
 		P0("cfoo\nbar\n(S\"bing\"\ntR."),                     // GLOBAL + MARK + STRING + TUPLE + REDUCE
 		P1("cfoo\nbar\n(U\x04bingtR."),                       // GLOBAL + MARK + SHORT_BINSTRING + TUPLE + REDUCE
 		P2("cfoo\nbar\nU\x04bing\x85R."),                     // GLOBAL + SHORT_BINSTRING + TUPLE1 + REDUCE
@@ -554,7 +554,7 @@ var tests = []TestEntry{
 
 	// decode only
 	// TODO PUT + GET + BINGET + LONG_BINGET
-	X("LONG_BINPUT", []interface{}{int64(17)},
+	X("LONG_BINPUT", []any{int64(17)},
 		I("(lr0000I17\na.")),
 
 	Xuauto_dgo("graphite message1", graphiteObject1, graphitePickle1),
@@ -570,7 +570,7 @@ var tests = []TestEntry{
 	// loosy encode: decoding back gives another object.
 	// the only case where ogórek encoding is loosy is for Go struct types.
 	Xloosy_uauto_dgo("[]ogórek.foo{\"Qux\", 4}", []foo{{"Qux", 4}},
-		[]interface{}{map[interface{}]interface{}{"Foo": "Qux", "Bar": int64(4)}},
+		[]any{map[any]any{"Foo": "Qux", "Bar": int64(4)}},
 
 		// MARK + STRING + INT + DICT + LIST
 		P0("((S\"Foo\"\nS\"Qux\"\nS\"Bar\"\nI4\ndl."),
@@ -700,7 +700,7 @@ func TestEncode(t *testing.T) {
 //
 // It also verifies decoder robustness - via feeding it various kinds of
 // corrupt data derived from input.
-func testDecode(t *testing.T, decConfig DecoderConfig, object interface{}, input string) {
+func testDecode(t *testing.T, decConfig DecoderConfig, object any, input string) {
 	newDecoder := func(r io.Reader) *Decoder {
 		return NewDecoderWithConfig(r, &decConfig)
 	}
@@ -759,7 +759,7 @@ func testDecode(t *testing.T, decConfig DecoderConfig, object interface{}, input
 // encode-back tests are still performed.
 //
 // If errOk != nil, object encoding must produce that error.
-func testEncode(t *testing.T, proto int, encConfig EncoderConfig, decConfig DecoderConfig, object, objectDecodedBack interface{}, dataOk string, errOk error) {
+func testEncode(t *testing.T, proto int, encConfig EncoderConfig, decConfig DecoderConfig, object, objectDecodedBack any, dataOk string, errOk error) {
 	newEncoder := func(w io.Writer) *Encoder {
 		econf := EncoderConfig{}
 		econf = encConfig
@@ -823,7 +823,7 @@ func testEncode(t *testing.T, proto int, encConfig EncoderConfig, decConfig Deco
 // decoding further on next call
 func TestDecodeMultiple(t *testing.T) {
 	input := "I5\n.I7\n.N."
-	expected := []interface{}{int64(5), int64(7), None{}}
+	expected := []any{int64(5), int64(7), None{}}
 
 	buf := bytes.NewBufferString(input)
 	dec := NewDecoder(buf)
@@ -959,7 +959,7 @@ func TestPersistentRefs(t *testing.T) {
 	errInvalidRef := errors.New("invalid reference")
 
 	// Ref -> ? object
-	loadref := func(ref Ref) (interface{}, error) {
+	loadref := func(ref Ref) (any, error) {
 		// pretend we handle "zodb.BTree" -> ZBTree.
 		t, ok := ref.Pid.(Tuple)
 		if !ok || len(t) != 2 {
@@ -983,7 +983,7 @@ func TestPersistentRefs(t *testing.T) {
 	}
 
 	// object -> ? Ref
-	getref := func(obj interface{}) *Ref {
+	getref := func(obj any) *Ref {
 		// pretend we handle ZBTree.
 		switch obj := obj.(type) {
 		default:
@@ -999,7 +999,7 @@ func TestPersistentRefs(t *testing.T) {
 
 	testv := []struct {
 		input    string
-		expected interface{}
+		expected any
 	}{
 		{"Pabc\n.", errInvalidRef},
 		{"\x80\x01S'abc'\nQ.", errInvalidRef},
@@ -1127,7 +1127,7 @@ func BenchmarkDecode(b *testing.B) {
 
 func BenchmarkEncode(b *testing.B) {
 	// prepare one large slice from all test vector values
-	input := make([]interface{}, 0)
+	input := make([]any, 0)
 	approxOutSize := 0
 	for _, test := range tests {
 		if test.picklev[0].err == nil {
@@ -1196,7 +1196,7 @@ func TestUnquoteCharEOF(t *testing.T) {
 
 func TestStringsFmt(t *testing.T) {
 	tvhash := []struct{
-		in      interface{}
+		in      any
 		vhashok string
 	}{
 		{"мир",             `"мир"`},

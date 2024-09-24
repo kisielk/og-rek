@@ -12,7 +12,7 @@ import (
 // Python int is decoded as int64, while Python long is decoded as big.Int.
 // Go code should use AsInt64 to accept normal-range integers independently of
 // their Python representation.
-func AsInt64(x interface{}) (int64, error) {
+func AsInt64(x any) (int64, error) {
 	switch x := x.(type) {
 	case int64:
 		return x, nil
@@ -33,7 +33,7 @@ func AsInt64(x interface{}) (int64, error) {
 //
 // [ByteString] is treated related to [Bytes] because [ByteString] represents str
 // type from py2 which can contain both string and binary data.
-func AsBytes(x interface{}) (Bytes, error) {
+func AsBytes(x any) (Bytes, error) {
 	switch x := x.(type) {
 	case Bytes:
 		return x, nil
@@ -50,7 +50,7 @@ func AsBytes(x interface{}) (Bytes, error) {
 //
 // [ByteString] is treated related to string because [ByteString] represents str
 // type from py2 which can contain both string and binary data.
-func AsString(x interface{}) (string, error) {
+func AsString(x any) (string, error) {
 	switch x := x.(type) {
 	case string:
 		return x, nil
@@ -64,7 +64,7 @@ func AsString(x interface{}) (string, error) {
 // stringEQ compares arbitrary x to string y.
 //
 // It succeeds only if AsString(x) succeeds and string data of x equals to y.
-func stringEQ(x interface{}, y string) bool {
+func stringEQ(x any, y string) bool {
 	s, err := AsString(x)
 	if err != nil {
 		return false

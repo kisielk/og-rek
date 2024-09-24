@@ -44,7 +44,7 @@ type EncoderConfig struct {
 	// will be encoded as an object reference.
 	//
 	// See Ref documentation for more details.
-	PersistentRef func(obj interface{}) *Ref
+	PersistentRef func(obj any) *Ref
 
 	// StrictUnicode, when true, requests to always encode Go string
 	// objects as Python unicode independently of used pickle protocol.
@@ -71,7 +71,7 @@ func NewEncoderWithConfig(w io.Writer, config *EncoderConfig) *Encoder {
 }
 
 // Encode writes the pickle encoding of v to w, the encoder's writer
-func (e *Encoder) Encode(v interface{}) error {
+func (e *Encoder) Encode(v any) error {
 	proto := e.config.Protocol
 	if !(0 <= proto && proto <= highestProtocol) {
 		return fmt.Errorf("pickle: encode: invalid protocol %d", proto)
@@ -109,7 +109,7 @@ func (e *Encoder) emit(bv ...byte) error {
 }
 
 // emitf writes formatted string into encoder output.
-func (e *Encoder) emitf(format string, argv ...interface{}) error {
+func (e *Encoder) emitf(format string, argv ...any) error {
 	_, err := fmt.Fprintf(e.w, format, argv...)
 	return err
 }
@@ -659,7 +659,7 @@ func (e *Encoder) encodeStruct(st reflect.Value) error {
 	return e.emit(opDict)
 }
 
-func reflectValueOf(v interface{}) reflect.Value {
+func reflectValueOf(v any) reflect.Value {
 
 	rv, ok := v.(reflect.Value)
 	if !ok {
