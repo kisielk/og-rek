@@ -9,14 +9,14 @@ import (
 // Under the given transformation function in must be transformed to outOK.
 type CodecTestCase struct {
 	in    string
-	outOK interface{} // string | error
+	outOK any // string | error
 }
 
 // testCodec tests transform func applied to all test cases from testv.
 func testCodec(t *testing.T, transform func(in string)(string, error), testv []CodecTestCase) {
 	for _, tt := range testv {
 		s, err := transform(tt.in)
-		var out interface{} = s
+		var out any = s
 		if err != nil {
 			out = err
 		}

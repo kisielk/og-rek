@@ -13,8 +13,8 @@ func TestAsInt64(t *testing.T) {
 	Erange := fmt.Errorf("long outside of int64 range")
 
 	testv := []struct {
-		in    interface{}
-		outOK interface{}
+		in    any
+		outOK any
 	}{
 		{int64(0),                       int64(0)},
 		{int64(1),                       int64(1)},
@@ -36,7 +36,7 @@ func TestAsInt64(t *testing.T) {
 
 	for _, tt := range testv {
 		iout, err := AsInt64(tt.in)
-		var out interface{} = iout
+		var out any = iout
 		if err != nil {
 			out = err
 			if iout != 0 {
@@ -54,10 +54,10 @@ func TestAsInt64(t *testing.T) {
 }
 
 func TestAsBytesString(t *testing.T) {
-	Ebytes := func(x interface{}) error {
+	Ebytes := func(x any) error {
 		return fmt.Errorf("expect bytes|bytestr; got %T", x)
 	}
-	Estring := func(x interface{}) error {
+	Estring := func(x any) error {
 		return fmt.Errorf("expect unicode|bytestr; got %T", x)
 	}
 
@@ -65,7 +65,7 @@ func TestAsBytesString(t *testing.T) {
 	const n = false
 
 	testv := []struct {
-		in  interface{}
+		in  any
 		bok bool // AsBytes  succeeds
 		sok bool // AsString succeeds
 	}{

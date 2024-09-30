@@ -3,7 +3,7 @@
 // Use [Decoder] to decode a pickle from input stream, for example:
 //
 //	d := ogórek.NewDecoder(r)
-//	obj, err := d.Decode() // obj is interface{} representing decoded Python object
+//	obj, err := d.Decode() // obj is any representing decoded Python object
 //
 // Use [Encoder] to encode an object as pickle into output stream, for example:
 //
