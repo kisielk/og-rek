@@ -18,6 +18,8 @@ jobs:
           - "1.22.x"
           - "1.23.x"
           - "1.24.x"
+          - "1.25.x"
+          - "1.26.x"
       # Don't cancel everything when one Go version fails
       fail-fast: false
     runs-on: ubuntu-latest
